@@ -6,9 +6,8 @@ Hito 2 — Navegador del syllabus real
 
 ## Estado
 
-EN CIERRE — implementación, correcciones y QA final completas; re-QA de la última
-mini-ronda (QA-F1, QA-D1..D3) en curso. Pendiente de revisión del usuario antes de
-mergear a `main` y de autorizar el siguiente hito.
+DONE — pendiente de revisión del usuario (rama `m2-syllabus-ui`) antes de mergear a
+`main` y de autorizar el siguiente hito.
 
 ## Fuente educativa
 
@@ -36,10 +35,11 @@ No utilizar contenido demo inventado. Fixtures solo del repo real (ADR-009).
 
 ## Próxima acción
 
-1. Terminar la re-QA de la última mini-ronda y cerrar el hito.
-2. Revisión del usuario de la rama `m2-syllabus-ui` y merge a `main`.
-3. Propuesto: hito "Autonomía de 4Geeks" (archivar lecciones externas de
+1. Revisión del usuario de la rama `m2-syllabus-ui` y merge a `main`.
+2. Propuesto: hito "Autonomía de 4Geeks" (archivar lecciones externas de
    4geeks.com, respaldos Wayback) antes del Hito 3 — ver `BACKLOG.md`.
+3. Propuesto: pasada de alineación con shadcn/ui (skill `shadcn` instalada) como
+   refactor sin cambios funcionales — ver `BACKLOG.md`.
 
 ## Blockers
 

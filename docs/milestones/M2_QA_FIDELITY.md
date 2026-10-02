@@ -462,3 +462,65 @@ Comparación de nodos de texto ≥20 caracteres dentro de `<main>` contra el `ra
 - Contraste: script okLCH→sRGB+WCAG efímero en `/tmp` (ver informe de diseño).
 - Tests: `vitest run` → 547 passed / 1 skipped; guard AC-0.10 14/14.
 - Restricciones: READ-ONLY, sin `install`, sin escrituras en base, `DATABASE_URL` nunca impresa, scripts y HTML fuera del repo.
+
+---
+
+### Re-QA final (QA-F1, QA-D1..D3)
+
+- Tarea: `[M2-ZQA]` — re-QA **READ-ONLY** de la última mini-ronda de correcciones. Este informe cubre **QA-F1** y **QA-D2** (fidelidad/accesibilidad); **QA-D1** y **QA-D3** se re-verifican en `M2_QA_DESIGN.md`. El único archivo tocado es este informe (append).
+- Fecha: 2026-10-02. Servidor: `http://localhost:3100` (del coordinador; no se arrancó ni paró). Snapshot verificado por SQL en `BEGIN READ ONLY`: `1b8fb5cc-ea2f-49c1-9179-91b0d6edeb0a`, `ref=main`, commit `962c1e5fc8ebad273abaa348fb3d161568ce8707`, `complete`, 0 errores, 899 archivos (781 texto / 118 binario), 84 proyectos, 22 contextos, 5 lecciones, 0 filas anidadas en `source_projects` de `4-devs`.
+- Método: `curl -s` con `-b 'lang=es'`/`-b 'lang=en'` (y `theme=light|dark` para el `<html class>`), 31 HTML en `/tmp` fuera del repo; verificación independiente de títulos contra el `raw_content` del snapshot con un script Node efímero (`pg`, solo `SELECT` en `BEGIN READ ONLY`, `DATABASE_URL` nunca impresa); comparación de hrefs del HTML con el corpus fuente para separar enlaces generados de literales.
+
+| ID   | Sev. original | Estado re-QA    | Evidencia principal                                                                                                                                                     |
+| ---- | ------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| QA-F1 | MAJOR        | **Corregido**   | `reader.ts:481-489` y `:573-581` usan `titlePathFor(context,row,lang)` (`:621-632`); los 5 no listados muestran el H1 de la variante EN en índice, `<title>`, cabecera y `<h1>`; 84/84 títulos EN y ES literales. |
+| QA-D2 | MINOR        | **Corregido**   | `projects-document.tsx:86` y `projects-index.tsx:105` pasan `lang={lang}` a `SourceMarkdown`; en EN el sr-only es `(opens in a new tab)` y en ES `(se abre en una pestaña nueva)`; 0 fugas de idioma en las 31 páginas. |
+
+#### QA-F1 — títulos de los 5 proyectos no listados en el idioma pedido (detalle)
+
+- **Código**: el fallback sin etiqueta de README usa la variante real del idioma: `buildProjectUnit` (`platform/src/course/reader.ts:481-489`) y `buildSubprojectUnit` (`:573-581`) llaman a `this.titlePathFor(context, row, lang)`, que pasa por `variantPathFor` (`:602-618`); el preferido sigue siendo ES, pero con `lang=en` se lee el `README.md` del proyecto.
+- **Evidencia literal** (`/projects` con `Cookie: lang=en`):
+
+  ```html
+  <a href="/projects/ai-eng-cybersecurity-practices" class="…">Secure Practices for AI Integration in Systems</a>
+  <a href="/projects/ai-eng-cybersecurity-vulnerabilities" class="…">Web Vulnerability Audit and Remediation (OWASP Top 10)</a>
+  <a href="/projects/ai-eng-evaluating-regression-model" class="…">Evaluating a Regression Model</a>
+  <a href="/projects/ai-eng-sales-forecasting-timeseries" class="…">Sales Forecasting with Time Series Feature Engineering</a>
+  <a href="/projects/vps-ssh-resource-optimization" class="…">SSH into a VPS, audit resources, and optimize RAM</a>
+  ```
+
+- **Detalle** (`/projects/<slug>` con `lang=en`): en los 5 casos `<title>`, el `<p class="text-base font-medium …">` de cabecera y el `<h1>` del documento dicen exactamente lo mismo y es el **H1 literal de la variante EN**; con `lang=es` dicen el H1 literal de `README.es.md`. Ejemplo: `ai-eng-cybersecurity-practices` → `Secure Practices for AI Integration in Systems` (EN) / `Prácticas Seguras en la Integración de IA en Sistemas` (ES).
+- **Comprobación 84/84 independiente** (HTML ↔ `raw_content` del snapshot, normalizando solo decoración Markdown inline y espacios): en ES **79/79** títulos listados == etiqueta de `README.es.md` y **5/5** no listados == H1 de su `README.es.md`; en EN **79/79** == etiqueta de `README.md` y **5/5** == H1 de su `README.md`; **0 discordancias** y 0 fallbacks a slug.
+- **Subproyectos** (`buildSubprojectUnit`): en `/projects/4-devs` con `lang=en` los dos subproyectos muestran H1 EN (`Operations Backoffice – Incident Manager`, `Operations Backoffice – Inventory Manager`), también corregidos.
+
+#### QA-D2 — avisos sr-only de enlaces en el idioma global (detalle)
+
+- **Código**: `projects-document.tsx:83-86` y `projects-index.tsx:101-105` renderizan `SourceMarkdown` con `lang={lang}`; los copys viven en `source-markdown.tsx:28-39`.
+- **Evidencia literal** (`/projects`, enlace a `10-realtime/agent-observability` del documento mostrado):
+
+  ```html
+  <!-- lang=en -->
+  <a href="https://github.com/Aresdgi/ai-engineering-syllabus/tree/962c1e5…/content/contexts/10-realtime/agent-observability" target="_blank" rel="noopener noreferrer" class="…">…<span class="sr-only"> (opens in a new tab)</span></a>
+  <!-- lang=es -->
+  …<span class="sr-only"> (se abre en una pestaña nueva)</span></a>
+  ```
+
+- **Recuento en las 31 páginas** (índices, 10 detalles ES/EN, contextos con/sin `?doc`, 404): en todas las páginas EN **0** apariciones de `(se abre en una pestaña nueva)`/`(enlace roto)` y en todas las ES **0** de `(opens in a new tab)`/`(broken link)`; el hint roto también alterna correctamente (`c06.en` → `(broken link)`, `c06.es` → `(enlace roto)`).
+
+#### No regresión de la mini-ronda
+
+- **AC-2.2 (orden intacto)**: `/projects` renderiza **84/84** filas en la secuencia exacta derivada de `content/projects/README.md` (79 listadas por el README + 5 no listadas al final por `source_path`), en ES **y** EN; SHA-256 de la secuencia de slugs = `69a3264ff67ed5df0f72c3dc081908c948272dabd8182ca935f414d32f1c9c0f`, idéntico a la Re-QA anterior. Marcadores: **71 exactos `0..70`** sobre las 71 entradas de lista ordenada y **0** marcadores en las 13 restantes (`4-devs`, 7 de "Otros proyectos", 5 no listados).
+- **AC-2.13 (títulos)**: los 84 títulos de proyecto en EN y ES son literales del README del idioma o del H1 de la variante del idioma (79+5; 0 discrepancias, 0 slug), tal como detalla QA-F1; el resto de la fidelidad no cambia (mismos 899/84/22/5 del snapshot).
+- **0 hrefs generados a 4Geeks en 20 páginas** (se analizaron 31): `https://github.com/4GeeksAcademy/ai-engineering-syllabus/(blob|tree|raw)/…` → **0**; `raw.githubusercontent.com` → **0**; enlaces a GitHub del resolvedor → **37** al espejo `github.com/Aresdgi/…` pinneados al commit. Las 5 URLs distintas a `github.com/4GeeksAcademy`, las 22 a `4geeksacademy.com`, las de `4geeks.com` y `x.com` (61 ocurrencias en las 20 páginas) son **literales del contenido** (subcadena exacta del `raw_content`; 0 no literales). «Ver en GitHub (espejo)»/`View on GitHub (mirror)` conserva la procedencia textual del repo de origen y enlaza al espejo `@962c1e5…`.
+
+#### Gate rápido
+
+| Comando                                   | Resultado                                                                        |
+| ----------------------------------------- | -------------------------------------------------------------------------------- |
+| `lint` (`eslint .`)                       | **exit 0**, sin avisos.                                                          |
+| `typecheck` (`next typegen && tsc --noEmit`) | **exit 0**, «Types generated successfully».                                    |
+| `test` (`vitest run`)                     | **58 archivos pasan / 1 skipped; 557 tests pasan / 1 skipped, 0 fallos** (6,6 s). |
+
+#### Veredicto
+
+- **LISTO PARA CERRAR** por fidelidad/seguridad: QA-F1 y QA-D2 **CORREGIDOS** con evidencia en HTML real y en la fuente; AC-2.2 y AC-2.13 sin regresión; 0 hrefs generados a 4Geeks; gate en verde. No hay BLOCKER ni MAJOR en este informe; el único residual de la mini-ronda es la observación de diseño sobre el estado activo del aside de documentos (ver `M2_QA_DESIGN.md`).

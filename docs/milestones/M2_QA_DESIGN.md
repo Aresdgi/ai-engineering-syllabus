@@ -445,3 +445,72 @@ Se verificó que el tema se aplica en el servidor: `Cookie: theme=dark` → `<ht
 - `grep` de `decoration-border`, `tw-animate-css`, `break-all`, `dangerouslySetInnerHTML`/`innerHTML`/`eval(` y `documentElement|matchMedia|localStorage` sobre `platform/src`.
 - Tests: guard 14/14; suite completa 547 passed / 1 skipped.
 - Restricciones: READ-ONLY, sin `install`, sin escrituras en base, `DATABASE_URL` nunca impresa, dev server del coordinador intacto; HTML y scripts fuera del repo.
+
+---
+
+### Re-QA final (QA-F1, QA-D1..D3)
+
+- Tarea: `[M2-ZQA]` — re-QA **READ-ONLY** de la mini-ronda. Este informe cubre **QA-D1** y **QA-D3** (QA-F1 y QA-D2 se re-verifican en `M2_QA_FIDELITY.md`). No se ha modificado ningún archivo del repo salvo este informe (append).
+- Fecha: 2026-10-02. Servidor: `http://localhost:3100` (del coordinador; no se arrancó ni paró).
+- Método: `curl -s` con `-b 'lang=es'`/`-b 'lang=en'` y `theme=light|dark`; ratios WCAG recalculados desde los tokens `oklch` de `platform/src/app/globals.css` con script Python efímero fuera del repo; layout de 375 px medido con un Brave headless propio (`--headless=new` + CDP, perfil temporal en `/tmp`, puerto aislado, cerrado al terminar) **y** razonado desde las clases de `app-shell.tsx`; gate `lint`/`typecheck`/`test`.
+
+| ID   | Sev. original | Estado re-QA  | Evidencia principal                                                                                                                                                                          |
+| ---- | ------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| QA-D1 | MAJOR        | **Corregido** | `language-selector.tsx:58-63`: el activo usa `bg-foreground text-background` → **19,79:1** (claro) y **18,96:1** (oscuro) recalculados desde los tokens; `nav-link.tsx:19-24` aplica el mismo criterio. |
+| QA-D3 | MINOR        | **Corregido** | `app-shell.tsx:77-113`: fila 1 marca + ES\|EN + tema; nav `order-last w-full` en su propia línea. Medido a 375 px: nav 343/343 px, `scrollWidth == clientWidth`, 0 desbordamiento horizontal.      |
+
+#### QA-D1 — contraste del estado activo ES|EN (detalle)
+
+- **Código**: `platform/src/components/language-selector.tsx:58-63` — activo `bg-foreground text-background`; inactivo `text-muted-foreground hover-fine:bg-muted/60`. `platform/src/components/nav-link.tsx:19-24` aplica la misma pareja al ítem de nav actual (antes `bg-secondary`).
+- **Evidencia literal** (`/projects`, `Cookie: lang=en`; el mismo markup con `theme=dark`):
+
+  ```html
+  <a href="/preferences/language/en?next=%2Fprojects" lang="en" hrefLang="en" aria-label="English" aria-current="true" class="inline-block rounded-sm px-1.5 py-0.5 text-xs font-medium transition-colors duration-150 ease-out bg-foreground text-background">
+  ```
+
+  Con `theme=dark` el HTML sirve `<html lang="en" class="antialiased dark">` y el mismo par de clases; con `theme=light`, `class="antialiased light"`.
+- **Ratios recalculados desde los tokens oklch** (claro: `foreground #0a0a0a` / `background #ffffff`; oscuro: `#fafafa` / `#0a0a0a`):
+
+| Estado / uso                              | Claro     | Oscuro    | AA texto (4,5) | AA no-texto (3,0) |
+| ----------------------------------------- | --------- | --------- | -------------- | ----------------- |
+| **Activo ES\|EN** (`bg-foreground` + `text-background`) | **19,79:1** | **18,96:1** | ✅             | ✅                |
+| Inactivo (`muted-foreground` sobre página) | 4,73:1    | 7,63:1    | ✅             | ✅                |
+| Borde del contenedor (`border`)           | 1,26:1    | 1,25:1    | —              | (no identifica el estado por sí solo) |
+| `ring` de foco                            | 4,73:1    | 4,18:1    | —              | ✅                |
+
+  Los valores que motivaron QA-D1 (fondo activo **1,09:1** claro / **1,31:1** oscuro) han desaparecido.
+- **Residual R-A (MINOR)**: el documento actual del aside `DocumentNav` sigue con `bg-secondary font-medium text-secondary-foreground` (`document-nav.tsx:56-61`), es decir, el mismo fondo 1,09:1 / 1,31:1 que QA-D1 pedía alinear también en ese componente (NavLink sí se alineó). Evidencia real en `/contexts/06-telemetry-data-pipelines?doc=data-pipelines%2FCONTEXT-brasaland.es.md`:
+
+  ```html
+  <a … aria-current="true" class="block rounded-md px-2.5 py-2 text-sm … bg-secondary font-medium text-secondary-foreground">
+  ```
+
+  Corrección sugerida (una clase): `bg-foreground text-background` (o `ring-1 ring-ring`), como en el selector y el nav. No bloquea el cierre.
+
+#### QA-D3 — shell a 375 px (detalle)
+
+- **Clases servidas** (idénticas en ES/EN): contenedor `mx-auto flex w-full max-w-5xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 sm:flex-nowrap …`; marca `mr-auto shrink-0 text-sm …`; nav `order-last w-full min-w-0 overflow-x-auto sm:order-none sm:w-auto …`; selectores `shrink-0`; los 3 ítems "próximo hito" siguen `hidden lg:block`.
+- **Razonamiento**: a 375 px el ancho útil es 375 − 32 (`px-4`) = **343 px**. Fila 1 = marca (193 px medidos) + gap 12 + ES\|EN (61 px) + gap 12 + tema (28 px) = **306 px ≤ 343**; la nav (`order-last w-full`) pasa a la línea 2 con 343 px completos y su contenido ronda 260 px.
+- **Medición con navegador real** (mi propia sesión headless, viewport 375×812, ambos idiomas):
+
+| Elemento               | x   | y   | ancho | borde derecho |
+| ---------------------- | --- | --- | ----- | ------------- |
+| Marca                  | 16  | 16  | 193   | 209           |
+| Selector ES\|EN        | 258 | 8   | 61    | 319           |
+| Selector de tema       | 331 | 9   | 28    | 359           |
+| Nav principal          | 16  | 42  | 343   | 359           |
+
+  `nav.scrollWidth == nav.clientWidth == 343` (**sin recorte**, sin necesidad de scroll), `document.documentElement.scrollWidth == innerWidth == 375` (**sin desbordamiento horizontal**), alto de cabecera 79 px. Captura en `/tmp/m2zqa/shell-375.png` (artefacto efímero fuera del repo); los ítems deshabilitados no ocupan sitio.
+- **Residuales ya registrados** (sin cambios en la mini-ronda, NIT): `tw-animate-css` sigue en `package.json` sin uso (R-2) y `contexts-detail.tsx` conserva `break-all` en los assets del aside (R-3).
+
+#### Gate rápido
+
+| Comando                                       | Resultado                                                                        |
+| --------------------------------------------- | -------------------------------------------------------------------------------- |
+| `lint` (`eslint .`)                           | **exit 0**, sin avisos.                                                          |
+| `typecheck` (`next typegen && tsc --noEmit`)  | **exit 0**, «Types generated successfully».                                      |
+| `test` (`vitest run`)                         | **58 archivos pasan / 1 skipped; 557 tests pasan / 1 skipped, 0 fallos** (6,6 s). |
+
+#### Veredicto
+
+- **LISTO PARA CERRAR** por diseño/accesibilidad: QA-D1 y QA-D3 **CORREGIDOS** con evidencia en HTML real, tokens y medición a 375 px. No hay BLOCKER ni MAJOR; queda **1 MINOR residual (R-A: estado activo del aside de documentos)** y los NITs R-2/R-3 ya registrados, todos con corrección local de bajo riesgo.

@@ -103,3 +103,14 @@ Toda nueva función debe respetar `SOURCE_OF_TRUTH.md`.
 - La nota de fallback de idioma no es ejercitable con el corpus actual (todos los
   documentos con vista tienen par); mantener el test sintético.
 - Índices `/contexts` y `/lessons` con `?lang` antiguo: se ignora (ADR-019).
+- Estado activo del aside `DocumentNav` con contraste de no-texto 1,09:1 / 1,31:1
+  (MINOR residual de la re-QA final de diseño).
+
+## Alineación con shadcn/ui (propuesta tras H2)
+
+- Refactor sin cambios funcionales aplicando la skill `shadcn`: `ToggleGroup` (con
+  `asChild` + `Link`) para ES|EN y tema, `Collapsible` + `Badge` en procedencia,
+  `Item` en listas, `ScrollArea` en el aside, `Empty`, `Alert`, `Separator`,
+  `Breadcrumb`; instalar `lucide-react` (declarado en `components.json`) en lugar de
+  SVG inline; eliminar `space-y-*` y overrides `dark:` manuales. No tocar el render
+  de prosa Markdown. QA visual y de contraste obligatoria.
