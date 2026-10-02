@@ -46,3 +46,37 @@ Toda nueva función debe respetar `SOURCE_OF_TRUTH.md`.
   supply chain; valorar Dependabot).
 - Decidir si el CI debe cubrir el formato de la raíz: hoy hay 235 archivos
   upstream preexistentes sin formatear que no deben tocarse.
+
+## Ingesta (candidatas detectadas en M1)
+
+- Deduplicar errores al reintentar snapshots `failed` (F-05): hoy dos intentos
+  fallidos del mismo commit insertan dos veces las mismas filas en
+  `source_import_errors`; usar una clave única con `ON CONFLICT DO NOTHING` o
+  borrar los errores previos del propio snapshot.
+- Definir la carrera de dos ingestas concurrentes del mismo commit: el
+  `UNIQUE(repository_id, commit_sha)` evita snapshots duplicados, pero no qué
+  resumen (no-op o creación) obtiene cada proceso.
+- Preferencia recursiva de documento de contexto (F-07, H2): 4 de 22 contextos
+  tienen su `CONTEXT-*.md` en subdirectorios y hoy `preferred_readme_path` y
+  `language` quedan `null` a nivel de contexto.
+- Indexar subproyectos anidados (p. ej. `4-devs`) en H2: `source_projects`
+  indexa solo carpetas de primer nivel; `4-devs` contiene subdirectorios con
+  `learn.json`.
+- Previsualización/`--dry-run` de `db:migrate` (H-2): listar el SQL pendiente
+  antes de aplicar contra una base real.
+- Smoke E2E real contra GitHub en CI programado (H-3) y test de reconciliación
+  de conteos con commit pinneado: hoy el smoke real es opt-in y queda skipped.
+- Resolver repo/ref con `git ls-remote` y caché ETag: reduce llamadas API y
+  rate limit en sincronizaciones repetidas.
+- Symlinks como referencia en el contrato: el upstream auditado no tiene, pero
+  debe decidirse su representación si aparecen.
+- Políticas RLS reales para H3: todas las tablas tienen RLS habilitado y sin
+  políticas; al incorporar autenticación hay que definirlas.
+- Script de alta de fixtures con contraste upstream: automatiza el protocolo
+  manual de ADR-009 (`commit`/`path`/`blob_sha` contra el repo fuente).
+- Usar la URI del Session pooler en CI/Vercel (sin IPv6): la conexión directa
+  `db.<ref>.supabase.co` es solo IPv6.
+- Test propio de redacción para `platform/src/source/store/migrate.ts` (que un
+  futuro `console.error(error)` crudo haga fallar la suite) (N-01 de M1-RQ).
+- Máscara de URIs en `platform/src/lib/redact.ts` para contraseñas con `/` sin
+  percent-encode (N-02 de M1-RQ).

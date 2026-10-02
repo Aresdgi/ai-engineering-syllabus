@@ -1,0 +1,60 @@
+{
+  "repository": "4GeeksAcademy/ai-engineering-syllabus",
+  "fixtures": [
+    {
+      "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
+      "path": "content/contexts/00-general-contexts/nexova/nexova-hiring-process-sla.en.md",
+      "blob_sha": "7cbb71806c7f51f4e1825a601a856633165ab338"
+    },
+    {
+      "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
+      "path": "content/contexts/09-agentic-workflows/rfp-requests/trackflow/CONTEXT-trackflow-request-3.pdf",
+      "blob_sha": "3465abb3d19ac49793b06e806db5c66738feeec3"
+    },
+    {
+      "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
+      "path": "content/contexts/audit-log/CONTEXT-trackflow.es.md",
+      "blob_sha": "110af327664f620914a48c509e7c5102ea7a0c0a"
+    },
+    {
+      "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
+      "path": "content/contexts/audit-log/CONTEXT-trackflow.md",
+      "blob_sha": "eff7fdb7a5d9947666279b55ba72bc9ce983b4aa"
+    },
+    {
+      "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
+      "path": "content/lessons/4geeks-student-extension/4geeks-student-extension.es.md",
+      "blob_sha": "41313f085f5f4a7bba5bb2e5803151bdf8137fe4"
+    },
+    {
+      "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
+      "path": "content/lessons/4geeks-student-extension/4geeks-student-extension.md",
+      "blob_sha": "e27610ccc3459e8b636af9ff9e905c62e39585dd"
+    },
+    {
+      "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
+      "path": "content/projects/ai-eng-error-handling/.learn/preview.png",
+      "blob_sha": "7645687bcbde8522dc1a10b44380da92bf32ecfd"
+    },
+    {
+      "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
+      "path": "content/projects/ai-eng-milestone-choose-company/.learn/solution/README.md",
+      "blob_sha": "49083ff748b6134f970dd635462fc7f57f032a0e"
+    },
+    {
+      "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
+      "path": "content/projects/data-modeling-and-class-diagrams-digital-wallet/README.es.md",
+      "blob_sha": "3756e6cc5718e385ed7330732a902ec4ee20c8f2"
+    },
+    {
+      "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
+      "path": "content/projects/data-modeling-and-class-diagrams-digital-wallet/README.md",
+      "blob_sha": "66fb7d976a012b49d234174d48b2611ada4f5bbc"
+    },
+    {
+      "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
+      "path": "content/projects/data-modeling-and-class-diagrams-digital-wallet/learn.json",
+      "blob_sha": "1c008a23ca3fec63b097ea13f0e80671474b433c"
+    }
+  ]
+}

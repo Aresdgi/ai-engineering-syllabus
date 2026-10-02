@@ -168,3 +168,33 @@ describe("AC-0.10 F-03: fail-closed por bucket", () => {
     expect(() => collectCatalogTokens(contentRoot)).toThrow(/fail-closed/);
   });
 });
+
+describe("AC-0.10 F-06: extensiones de configuración escaneadas", () => {
+  it.each([".yaml", ".yml", ".sql", ".example"])(
+    "detecta un token real del catálogo en un archivo %s",
+    (extension) => {
+      const token = pickRealMultiSegmentToken();
+      const scanRoot = createTemporaryRoot(
+        `ac010-ext-${extension.replace(".", "")}-`,
+      );
+      const injectedFile = path.join(scanRoot, `config${extension}`);
+      writeFileSync(injectedFile, `valor: "${token}"\n`);
+
+      const violations = scanDirectoryForCatalogTokens(
+        scanRoot,
+        path.join(scanRoot, "guard.ts"),
+      );
+
+      expect(violations).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: "catalog-name",
+            token,
+            line: 1,
+            file: path.relative(REPO_ROOT, injectedFile),
+          }),
+        ]),
+      );
+    },
+  );
+});

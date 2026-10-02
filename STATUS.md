@@ -2,11 +2,11 @@
 
 ## Hito activo
 
-Hito 0 — Fundación
+Hito 1 — Ingestión fiel del repositorio
 
 ## Estado
 
-DONE — pendiente de revisión del usuario antes de autorizar el Hito 1.
+DONE — pendiente de revisión del usuario antes de autorizar el Hito 2.
 
 ## Fuente educativa
 
@@ -14,20 +14,22 @@ DONE — pendiente de revisión del usuario antes de autorizar el Hito 1.
 
 ## Regla activa
 
-No utilizar contenido demo inventado.
+No utilizar contenido demo inventado. Fixtures solo del repo real (ADR-009).
 
-## Resultado del Hito 0
+## Resultado del Hito 1
 
-- App en `platform/` (ADR-006): Next.js 16 + TypeScript strict, Tailwind v4,
-  shadcn/ui, ESLint, typecheck, Vitest; shell neutro con "Contenido todavía no
-  sincronizado".
-- AC-0.1 .. AC-0.10 verificados (ver `docs/milestones/M0_QA_TECHNICAL.md` y
-  `docs/milestones/M0_QA_FIDELITY.md`).
-- Plan y auditoría: `docs/milestones/M0_AUDIT_PLAN.md`.
+- Ingesta en `platform/src/source/` (reader GitHub, clasificación, validación,
+  store Drizzle) y CLI `pnpm ingest` / `pnpm db:migrate` (ADR-010..012).
+- Importado en Supabase el snapshot `main` @
+  `962c1e5fc8ebad273abaa348fb3d161568ce8707`: 899 archivos (625 projects, 264
+  contexts, 10 lessons; 781 texto / 118 binario), índices 84/22/5, 0 errores,
+  RLS en las 7 tablas, reimportación idempotente (no-op).
+- AC-1.1 .. AC-1.13 verificados: `docs/milestones/M1_QA_TECHNICAL.md` (fidelidad
+  byte a byte 899/899) y `docs/milestones/M1_QA_FIDELITY.md` (incl. re-QA).
 
 ## Próxima acción
 
-Esperar la revisión del Hito 0 por parte del usuario. No iniciar el Hito 1 sin
+Esperar la revisión del Hito 1 por parte del usuario. No iniciar el Hito 2 sin
 autorización explícita.
 
 ## Blockers

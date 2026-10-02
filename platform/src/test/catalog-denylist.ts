@@ -33,6 +33,10 @@ const SCANNED_EXTENSIONS = new Set([
   ".json",
   ".css",
   ".md",
+  ".yaml",
+  ".yml",
+  ".sql",
+  ".example",
 ]);
 
 const EXCLUDED_DIRECTORIES = new Set(["node_modules", ".next", "coverage"]);

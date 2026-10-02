@@ -8,14 +8,22 @@
 - canonical_url
 - default_branch
 
+Unique:
+
+- owner + name (`UNIQUE(owner, name)` en el esquema real)
+
 ## source_snapshots
 
 - id
 - repository_id
 - ref
 - commit_sha
-- imported_at
-- status
+- imported_at (`NOT NULL DEFAULT now()`)
+- status (`NOT NULL DEFAULT 'importing'`)
+
+Unique:
+
+- repository_id + commit_sha (base de la idempotencia de AC-1.11)
 
 ## source_files
 
@@ -23,14 +31,19 @@
 - snapshot_id
 - path
 - blob_sha
-- language
 - media_type
+- language nullable
+- language_evidence nullable
 - raw_content nullable
 - binary_reference nullable
 
 Unique:
 
 - snapshot_id + path
+
+Check:
+
+- exactamente uno de `raw_content`/`binary_reference` no nulo.
 
 ## source_projects
 
@@ -40,9 +53,15 @@ Representación indexada de un proyecto sin perder la fuente.
 - snapshot_id
 - source_path
 - canonical_order nullable
-- title
-- preferred_readme_path
-- metadata jsonb
+- title nullable
+- preferred_readme_path nullable
+- language nullable
+- language_evidence nullable
+- metadata jsonb (`NOT NULL DEFAULT '{}'::jsonb`)
+
+Unique:
+
+- snapshot_id + source_path
 
 ## source_contexts
 
@@ -50,17 +69,29 @@ Representación indexada de un proyecto sin perder la fuente.
 - snapshot_id
 - source_path
 - title nullable
-- language
-- metadata jsonb
+- preferred_readme_path nullable
+- language nullable
+- language_evidence nullable
+- metadata jsonb (`NOT NULL DEFAULT '{}'::jsonb`)
+
+Unique:
+
+- snapshot_id + source_path
 
 ## source_lessons
 
 - id
 - snapshot_id
 - source_path
-- title
-- language
-- metadata jsonb
+- title nullable
+- preferred_readme_path nullable
+- language nullable
+- language_evidence nullable
+- metadata jsonb (`NOT NULL DEFAULT '{}'::jsonb`)
+
+Unique:
+
+- snapshot_id + source_path
 
 ## source_relations
 
@@ -127,3 +158,84 @@ Relaciones extraídas de referencias explícitas.
 ## Regla
 
 No existe una tabla donde la IA pueda crear proyectos o lecciones oficiales.
+
+## source_import_errors (M1)
+
+Registro de errores de importación (AC-1.13). No existía en el modelo original;
+se añade vía ADR-011.
+
+- id
+- snapshot_id
+- source_path nullable
+- error_kind
+- message
+- detail jsonb nullable
+- created_at
+
+`error_kind` se restringe en base de datos a los nueve tipos declarados en
+`platform/src/source/types.ts` (`SOURCE_IMPORT_ERROR_KINDS`). Hay un índice por
+`snapshot_id`. Un error nunca sustituye contenido: la importación continúa con
+el resto y el snapshot termina en `complete_with_errors`; un fallo global
+termina en `failed`.
+
+## Estados de snapshot (M1)
+
+`source_snapshots.status` queda restringido por `CHECK` a exactamente cuatro
+valores:
+
+- `importing` — snapshot creado, ingesta en curso.
+- `complete` — archivos importados sin errores registrados.
+- `complete_with_errors` — ingesta terminada con errores registrados en
+  `source_import_errors`.
+- `failed` — fallo global (árbol truncado, commit irresoluble, tarball
+  corrupto).
+
+`UNIQUE(repository_id, commit_sha)` garantiza la idempotencia: reimportar el
+mismo commit devuelve el snapshot existente sin modificarlo; un commit nuevo
+crea otro snapshot y no toca el anterior.
+
+## language_evidence (M1)
+
+En `source_files`, `source_projects`, `source_contexts` y `source_lessons`, la
+pareja `language`/`language_evidence` solo admite, por `CHECK`, combinaciones
+con evidencia de path (ADR-012):
+
+- `es` + `suffix` (`.es.md`)
+- `en` + `suffix` (`.en.md`)
+- `en` + `pair-convention` (`X.md` con `X.es.md` en el mismo directorio)
+- `null` + `null` (sin evidencia)
+
+Nunca se infiere del contenido ni se traduce.
+
+## Alineación con el esquema implementado (M1)
+
+Este documento refleja el esquema real de
+`platform/src/source/store/schema.ts` y de la migración versionada
+`platform/drizzle/0000_puzzling_tenebrous.sql`. Precisiones que M1 añade al
+diseño original, sin retirar nada del previsto para hitos futuros:
+
+- `title` es nullable en `source_projects`, `source_contexts` y
+  `source_lessons`; M1 escribe `NULL` en las tres (derivar el título del
+  cuerpo es H2). `source_files`, `source_snapshots` y `source_import_errors` no
+  tienen columna `title`.
+- `preferred_readme_path` es nullable en proyectos, contextos y lecciones.
+  `null` significa "sin documento reconocible": se registra en `metadata` o
+  como error de importación; nunca se inventa.
+- `language`/`language_evidence` son nullable en las cuatro entidades que las
+  exponen (`source_files`, `source_projects`, `source_contexts`,
+  `source_lessons`); el `CHECK` solo admite las combinaciones de ADR-012,
+  incluida `null`/`null`.
+- Todas las FK (`snapshot_id`, `repository_id`) son `ON DELETE RESTRICT`:
+  nunca hay cascada. Los `UNIQUE` por snapshot y el índice
+  `source_import_errors(snapshot_id)` están en el SQL versionado.
+- `source_snapshots.imported_at` y `source_import_errors.created_at` usan
+  `DEFAULT now()`; `source_snapshots.status` usa `DEFAULT 'importing'`;
+  `metadata` usa `DEFAULT '{}'::jsonb`.
+- Las siete tablas llevan `ENABLE ROW LEVEL SECURITY` sin políticas (ADR-010):
+  el owner (servidor e ingesta) bypassa RLS y la Data API pública no expone
+  filas.
+- `source_relations`, `user_*`, `linked_project_repositories` y `ai_*` siguen
+  ausentes en la base real: son diseño de H3/H4/H6/H7, no de M1.
+
+La comparación columna a columna está auditada en
+`docs/milestones/M1_QA_FIDELITY.md` §6.2.
