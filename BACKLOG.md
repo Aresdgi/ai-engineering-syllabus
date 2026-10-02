@@ -8,7 +8,6 @@ Ideas de producto que NO forman parte del contenido educativo:
 - calendario personal
 - recordatorios
 - exportar notas
-- temas visuales
 - vista gráfica de relaciones
 - comparación entre snapshots
 - traducción bajo demanda claramente marcada
@@ -80,3 +79,27 @@ Toda nueva función debe respetar `SOURCE_OF_TRUTH.md`.
   futuro `console.error(error)` crudo haga fallar la suite) (N-01 de M1-RQ).
 - Máscara de URIs en `platform/src/lib/redact.ts` para contraseñas con `/` sin
   percent-encode (N-02 de M1-RQ).
+
+## Autonomía de 4Geeks (hito propuesto tras H2, antes de H3 — decisión del usuario 2026-10-02)
+
+- Archivar las ~6 lecciones externas de `4geeks.com/lesson/...` enlazadas desde los README
+  (≈120 ocurrencias) como material externo claramente marcado (URL + fecha de captura),
+  con ADR propio porque amplía "el repo es la única fuente".
+- Respaldo Wayback Machine para herramientas de 4Geeks enlazadas (`diagram.4geeks.com`,
+  `learn.4geeks.com`, `playground.4geeks.com/tracker`).
+- Los enlaces de marketing (`4geeksacademy.com/coding-bootcamps`, …) se dejan tal cual.
+- Decidir con H9 si la ingesta/sincronización pasa a usar el fork propio como fuente.
+
+## Navegador (candidatas detectadas en M2)
+
+- Visores de PDF/CSV y galería de assets (H4); hoy se sirven en crudo desde `/source-files/`.
+- Resaltado de sintaxis y tabla de contenidos (excluidos por ADR-014).
+- Orden canónico de contextos: `content/contexts/README*.md` tiene enlaces rotos y
+  carpetas no listadas; hoy se ordenan por `source_path`.
+- Retirar la dependencia muerta `tw-animate-css` de `platform/package.json` (R-2 de diseño).
+- Confirmar en CI que el build de producción no emite `data-next-error-stack` (F-07).
+- Todas las rutas son dinámicas por las cookies de idioma/tema del layout; valorar
+  caché por idioma si el rendimiento lo pide.
+- La nota de fallback de idioma no es ejercitable con el corpus actual (todos los
+  documentos con vista tienen par); mantener el test sintético.
+- Índices `/contexts` y `/lessons` con `?lang` antiguo: se ignora (ADR-019).

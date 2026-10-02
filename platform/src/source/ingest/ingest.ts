@@ -13,7 +13,9 @@
  *    `content/lessons`) e importa cada blob (AC-1.5..AC-1.7): guarda
  *    path + blob_sha verificado contra el árbol (AC-1.8), `raw_content` UTF-8
  *    íntegro o `binary_reference` pinneada por commit (AC-1.9), e idioma solo
- *    por evidencia de path (AC-1.10, ADR-012).
+ *    por evidencia de path (AC-1.10, ADR-012). Los bytes de los binarios se
+ *    guardan en `source_blobs` (ADR-018, direccionados por contenido) antes
+ *    que las filas de `source_files`.
  * 5. Construye los índices mínimos con `classify/` (título y orden en `null`).
  * 6. Registra cada fallo por archivo en `source_import_errors` sin abortar y
  *    sin crear contenido sustituto (AC-1.13); termina `complete`,
@@ -42,8 +44,10 @@ import { validateSourceFileContent } from "../validate/files";
 import { validateBlobContent, validateSourceTree } from "../validate/snapshot";
 import type { SourceValidationContext } from "../validate/paths";
 import {
+  type NewSourceBlob,
   type NewSourceFile,
   type NewSourceImportError,
+  type SourceBlobSha,
   type SourceCommitSha,
   type SourceFileContent,
   type SourceImportErrorKind,
@@ -297,6 +301,7 @@ async function failSnapshot(
 
 async function collectTreeFiles(input: CollectTreeFilesInput): Promise<{
   files: NewSourceFile[];
+  blobs: NewSourceBlob[];
   errors: NewSourceImportError[];
   counts: MutableFileCounts;
 }> {
@@ -310,6 +315,7 @@ async function collectTreeFiles(input: CollectTreeFilesInput): Promise<{
     .sort((a, b) => comparePaths(a.path, b.path));
 
   const files: NewSourceFile[] = [];
+  const blobsBySha = new Map<SourceBlobSha, NewSourceBlob>();
   const errors: NewSourceImportError[] = [];
   const counts = emptyFileCounts();
 
@@ -382,6 +388,16 @@ async function collectTreeFiles(input: CollectTreeFilesInput): Promise<{
     counts.total += 1;
     if (media.isBinary) {
       counts.binary += 1;
+      // El hash ya se verificó contra el árbol (`validateBlobContent`): los
+      // bytes son fieles o el archivo no llega hasta aquí. Direccionado por
+      // contenido: un mismo blob compartido por varios paths se guarda una vez.
+      if (!blobsBySha.has(entry.blobSha)) {
+        blobsBySha.set(entry.blobSha, {
+          blobSha: entry.blobSha,
+          bytes,
+          byteSize: bytes.byteLength,
+        });
+      }
     } else {
       counts.text += 1;
     }
@@ -407,7 +423,7 @@ async function collectTreeFiles(input: CollectTreeFilesInput): Promise<{
     });
   }
 
-  return { files, errors, counts };
+  return { files, blobs: [...blobsBySha.values()], errors, counts };
 }
 
 export async function ingestSnapshot(
@@ -484,7 +500,7 @@ export async function ingestSnapshot(
     return failSnapshot({ ...base, error: treeError });
   }
 
-  const { files, errors, counts } = await collectTreeFiles({
+  const { files, blobs, errors, counts } = await collectTreeFiles({
     reader: options.reader,
     tree,
     commitSha,
@@ -494,6 +510,12 @@ export async function ingestSnapshot(
 
   let indexes = emptyIndexCounts();
   try {
+    // Primero los bytes (direccionados por contenido, idempotentes): así
+    // ninguna fila de `source_files` con `binary_reference` existe sin su blob
+    // en `source_blobs` si la escritura de archivos falla. Un blob escrito de
+    // más es inocuo: no tiene FK al snapshot, se comparte entre snapshots y
+    // `ON CONFLICT (blob_sha) DO NOTHING` lo mantiene idempotente.
+    await options.store.upsertBlobs(blobs);
     await options.store.upsertFiles(files);
     const projects = buildSourceProjects(tree, snapshot.id);
     const contexts = buildSourceContexts(tree, snapshot.id);

@@ -14,6 +14,12 @@
  *   `"suffix"`, `"en"` + `"pair-convention"`) o `NULL` + `NULL`.
  * - Errores sin sustitutos (AC-1.13): `source_import_errors` registra los
  *   fallos; jamás se rellena contenido educativo ausente.
+ * - Autonomía de assets (M2, ADR-018): `source_blobs` guarda los bytes de los
+ *   binarios direccionados por el SHA-1 git del blob (`blob_sha`), de modo que
+ *   la app puede servirlos sin depender de `raw.githubusercontent.com`. Es una
+ *   tabla direccionada por contenido: la misma fila sirve a varios snapshots y
+ *   no tiene FK a `source_snapshots`; la procedencia textual sigue en
+ *   `source_files` (`path`, `blob_sha`, `binary_reference`).
  *
  * Seguridad (Supabase): todas las tablas llevan `ENABLE ROW LEVEL SECURITY`
  * sin políticas, de modo que la Data API pública (roles `anon`/`authenticated`
@@ -25,6 +31,7 @@
 import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import {
   check,
+  customType,
   index,
   integer,
   jsonb,
@@ -70,6 +77,28 @@ function sqlStringList(values: readonly string[]): SQL {
     sql`, `,
   );
 }
+
+/**
+ * Columna `bytea` con contrato `Uint8Array` (el driver `pg` devuelve `Buffer`,
+ * que es un `Uint8Array`; PGlite devuelve `Uint8Array`). Drizzle no trae un
+ * tipo `bytea` nativo, así que se declara con `customType` (contrato de M2).
+ */
+export const bytea = customType<{ data: Uint8Array; driverData: Uint8Array }>({
+  dataType() {
+    return "bytea";
+  },
+  toDriver(value) {
+    return value;
+  },
+  fromDriver(value) {
+    if (value instanceof Uint8Array) {
+      return value;
+    }
+    throw new Error(
+      "bytea: el driver devolvió un valor que no es Uint8Array/Buffer",
+    );
+  },
+});
 
 function languageEvidenceCheck(
   name: string,
@@ -158,6 +187,19 @@ export const sourceFiles = pgTable(
     ),
   ],
 ).enableRLS();
+
+/**
+ * Bytes de los binarios, direccionados por contenido (ADR-018): la clave es el
+ * SHA-1 git del blob, de modo que un mismo binario importado en varios
+ * snapshots comparte una sola fila. La ingesta y el backfill verifican
+ * `gitBlobSha(bytes) === blob_sha` antes de escribir; el store nunca sustituye
+ * bytes de una fila existente (`ON CONFLICT DO NOTHING`).
+ */
+export const sourceBlobs = pgTable("source_blobs", {
+  blobSha: text("blob_sha").primaryKey(),
+  bytes: bytea("bytes").notNull(),
+  byteSize: integer("byte_size").notNull(),
+}).enableRLS();
 
 export const sourceProjects = pgTable(
   "source_projects",

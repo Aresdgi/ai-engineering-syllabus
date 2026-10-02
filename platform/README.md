@@ -32,20 +32,21 @@ elegiste la segunda opción.
 Todos los comandos se ejecutan desde la raíz del repositorio con
 `pnpm --dir platform <script>`, o desde dentro de `platform/`.
 
-| Acción                | Comando                                 | Script en `package.json`                                                         |
-| --------------------- | --------------------------------------- | -------------------------------------------------------------------------------- |
-| Instalar dependencias | `pnpm --dir platform install`           | — (comando de pnpm)                                                              |
-| Desarrollo            | `pnpm --dir platform dev`               | `dev` → `next dev`                                                               |
-| Build de producción   | `pnpm --dir platform build`             | `build` → `next build`                                                           |
-| Servir el build       | `pnpm --dir platform start`             | `start` → `next start`                                                           |
-| Lint                  | `pnpm --dir platform lint`              | `lint` → `eslint .`                                                              |
-| Typecheck             | `pnpm --dir platform typecheck`         | `typecheck` → `next typegen && tsc --noEmit`                                     |
-| Tests (una pasada)    | `pnpm --dir platform test`              | `test` → `vitest run`                                                            |
-| Tests en modo watch   | `pnpm --dir platform test:watch`        | `test:watch` → `vitest`                                                          |
-| Ingesta del repo      | `pnpm --dir platform ingest [opciones]` | `ingest` → `tsx --env-file-if-exists=.env.local src/source/cli.ts`               |
-| Generar migraciones   | `pnpm --dir platform db:generate`       | `db:generate` → `drizzle-kit generate`                                           |
-| Aplicar migraciones   | `pnpm --dir platform db:migrate`        | `db:migrate` → `tsx --env-file-if-exists=.env.local src/source/store/migrate.ts` |
-| Formato               | `cd platform && npx prettier --write .` | — (no hay script; Prettier 3.8.3)                                                |
+| Acción                | Comando                                 | Script en `package.json`                                                              |
+| --------------------- | --------------------------------------- | ------------------------------------------------------------------------------------- |
+| Instalar dependencias | `pnpm --dir platform install`           | — (comando de pnpm)                                                                   |
+| Desarrollo            | `pnpm --dir platform dev`               | `dev` → `next dev`                                                                    |
+| Build de producción   | `pnpm --dir platform build`             | `build` → `next build`                                                                |
+| Servir el build       | `pnpm --dir platform start`             | `start` → `next start`                                                                |
+| Lint                  | `pnpm --dir platform lint`              | `lint` → `eslint .`                                                                   |
+| Typecheck             | `pnpm --dir platform typecheck`         | `typecheck` → `next typegen && tsc --noEmit`                                          |
+| Tests (una pasada)    | `pnpm --dir platform test`              | `test` → `vitest run`                                                                 |
+| Tests en modo watch   | `pnpm --dir platform test:watch`        | `test:watch` → `vitest`                                                               |
+| Ingesta del repo      | `pnpm --dir platform ingest [opciones]` | `ingest` → `tsx --env-file-if-exists=.env.local src/source/cli.ts`                    |
+| Generar migraciones   | `pnpm --dir platform db:generate`       | `db:generate` → `drizzle-kit generate`                                                |
+| Aplicar migraciones   | `pnpm --dir platform db:migrate`        | `db:migrate` → `tsx --env-file-if-exists=.env.local src/source/store/migrate.ts`      |
+| Backfill de binarios  | `pnpm --dir platform blobs:backfill`    | `blobs:backfill` → `tsx --env-file-if-exists=.env.local src/source/blobs-backfill.ts` |
+| Formato               | `cd platform && npx prettier --write .` | — (no hay script; Prettier 3.8.3)                                                     |
 
 Para comprobar el formato sin escribir: `cd platform && npx prettier --check .`.
 `platform/.prettierignore` excluye los artefactos generados y derivados
@@ -140,6 +141,57 @@ verbatim; ADR-009). El guard AC-0.10 verifica que cada fixture existe, está
 declarado y coincide byte a byte con su `blob_sha`. Ver
 [Fixtures fuente](#fixtures-fuente-hito-1) para el detalle.
 
+## Hito 2 — Navegador del syllabus real
+
+La UI de H2 muestra exclusivamente el snapshot ya importado (nunca contenido
+inventado) a través de la capa de lectura server-only `src/course/` y la capa
+de presentación neutra `src/components/`.
+
+- **Capa `course/`** (`src/course/`): consulta el **snapshot activo**
+  (`source_snapshots` terminado más reciente) en solo lectura con el esquema
+  Drizzle. Orden, títulos, descripciones y variantes de idioma se derivan en
+  lectura desde `raw_content` y los paths; no hay escrituras ni reingesta. Sin
+  snapshot o sin `DATABASE_URL` devuelve `null`/`[]` y la UI muestra el estado
+  vacío neutro. El pool `pg` es perezoso, así que `next build` no necesita base
+  de datos. Ver ADR-013.
+- **Rutas H2**: `/projects`, `/projects/[slug]`, `/contexts`,
+  `/contexts/[slug]`, `/lessons` y `/lessons/[slug]`. `?lang=es|en` selecciona
+  una variante real del documento y `?doc=<path>` selecciona un documento
+  dentro de un contexto. En Next 16 `params`/`searchParams` son `Promise` y
+  cada página llama `await connection()` antes de la primera consulta. El
+  esquema de URLs vive en `src/course/routes.ts`.
+- **Render Markdown** (`src/components/source-markdown.tsx` +
+  `src/lib/markdown/`): `react-markdown` con `remark-gfm` y
+  `remark-frontmatter`, y `rehype-raw` + `rehype-sanitize` con allowlist
+  (ADR-014). El frontmatter YAML no se muestra; las URLs pasan por un resolvedor
+  (vista interna, GitHub blob/tree pinneado al commit o enlace roto visible;
+  ADR-015) y los assets se sirven desde `source_blobs` con `GET
+/source-files/<path>` (ADR-018, que reemplaza el servido de ADR-016). Orden y
+  títulos son literales de la fuente (ADR-017).
+
+### Binarios e independencia del origen (ADR-018)
+
+Los bytes de los binarios viven en la tabla `source_blobs`, direccionada por el
+SHA-1 git del blob (dedupe entre snapshots, sin FK). La ingesta los guarda
+verificados junto a `source_files`, y la app los sirve desde `GET
+/source-files/<path>` sin depender de `raw.githubusercontent.com`; los enlaces
+"Ver en GitHub" y a directorios usan el espejo `SOURCE_MIRROR_REPOSITORY` (si no
+está definido, el repo del snapshot). La procedencia textual (repo de origen,
+commit, path y blob) no se reescribe nunca.
+
+Para snapshots importados antes de ADR-018 (que solo tienen `binary_reference`):
+
+```sh
+pnpm --dir platform blobs:backfill --dry-run --from-dir ..   # lee y verifica sin escribir
+pnpm --dir platform blobs:backfill --from-dir ..             # inserta los bytes
+```
+
+`--from-dir <ruta>` lee de un checkout local (p. ej. `..`, la raíz del repo);
+sin él, descarga el tarball del commit con el reader de GitHub (`--repo` /
+`GITHUB_REPO`, o el repo del snapshot). El comando es idempotente (los blobs ya
+presentes se omiten), verifica el hash git antes de insertar y nunca sustituye
+bytes existentes.
+
 ## Estructura de carpetas
 
 ```text
@@ -147,9 +199,12 @@ platform/
 ├── src/
 │   ├── app/                    # rutas, layout y estilos globales (App Router)
 │   ├── components/             # componentes de la aplicación
+│   │   ├── source-markdown.*   # render fiel del Markdown (Hito 2)
 │   │   ├── app-shell.test.tsx  # test del shell (jsdom)
 │   │   └── ui/                 # componentes shadcn/ui vendorizados
+│   ├── course/                 # lectura server-only del snapshot (Hito 2)
 │   ├── lib/                    # utilidades compartidas
+│   │   └── markdown/           # tipos y allowlist de saneado del render
 │   ├── source/                 # ingesta SOURCE (Hito 1; sin UI)
 │   │   ├── classify/           # buckets, idioma, media type e índices
 │   │   ├── github/             # reader (tarball + árbol + raw) y errores
@@ -185,7 +240,9 @@ Notas de la estructura:
   catálogo y el test de higiene de `.env.example`.
 - `src/source/` es la capa de ingesta del Hito 1 (reader, clasificación,
   store, validación y CLI). No importa `course/`, `user/` ni `ai/`, y la app
-  no la importa: no hay UI de ingesta.
+  no la importa: no hay UI de ingesta. `src/course/` es la capa de lectura del
+  Hito 2 (solo lectura del snapshot activo, sin escrituras) y
+  `src/lib/markdown/` contiene los tipos y la allowlist de saneado del render.
 - `drizzle/` contiene el SQL versionado que aplica `db:migrate` y que los
   tests aplican sobre PGlite; `fixtures/` guarda las copias verbatim del repo
   fuente declaradas en `manifest.json` (ADR-009).
@@ -217,10 +274,20 @@ Incluido en M1 (sin UI nueva):
 - Fixtures verbatim del repo real (ADR-009) y guard AC-0.10 reforzado.
 - La app sigue mostrando solo el shell neutro de M0.
 
-Excluido hasta hitos posteriores (H2-H9): catálogo/UI y orden canónico,
-autenticación y progreso, relaciones y render de assets, búsqueda, tutor
-IA/RAG, repositorios personales, evaluación y sincronización upstream. No se
-crea contenido educativo ni datos demo.
+Incluido en M2 (navegador del syllabus real):
+
+- Capa de lectura `src/course/` sobre el snapshot importado, con orden,
+  títulos y variantes de idioma derivados en lectura (ADR-013, ADR-017).
+- Vistas de proyectos, contextos y lecciones con cabecera de procedencia y
+  selector de idioma cuando existe.
+- Render Markdown fiel server-side con saneado por allowlist y política única
+  de enlaces (ADR-014, ADR-015) y assets servidos desde `source_blobs` con
+  `GET /source-files/<path>` (ADR-018, que reemplaza el servido de ADR-016).
+
+Excluido hasta hitos posteriores (H3-H9): autenticación y progreso, relaciones
+y visores de assets, búsqueda, tutor IA/RAG, repositorios personales,
+evaluación y sincronización upstream. No se crea contenido educativo ni datos
+demo.
 
 ## Guard AC-0.10
 
@@ -287,5 +354,7 @@ los tests fallan (un directorio sin archivos no produce violaciones).
 - [MILESTONES.md](../MILESTONES.md) — hitos de desarrollo de la plataforma.
 - [Hito 0 — Fundación](../docs/milestones/M0_FOUNDATION.md) — alcance y AC de M0.
 - [Hito 1 — Ingestión fiel](../docs/milestones/M1_INGESTION.md) — alcance y AC de M1.
+- [Hito 2 — Navegador del syllabus real](../docs/milestones/M2_REAL_SYLLABUS_UI.md) — alcance y AC de M2.
 - [M1 — Auditoría y plan](../docs/milestones/M1_AUDIT_PLAN.md) — auditoría, plan y desviaciones de M1.
-- [DECISIONS.md](../DECISIONS.md) — ADR-006 (app en `platform/`), ADR-009 (fixtures), ADR-010..012 (persistencia e idioma).
+- [M2 — Auditoría y plan](../docs/milestones/M2_AUDIT_PLAN.md) — decisiones de arquitectura y plan de M2.
+- [DECISIONS.md](../DECISIONS.md) — ADR-006 (app en `platform/`), ADR-009 (fixtures), ADR-010..012 (persistencia e idioma), ADR-013..017 (Hito 2).

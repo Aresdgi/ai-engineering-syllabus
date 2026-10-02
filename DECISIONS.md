@@ -165,3 +165,176 @@ La base de datos restringe por `CHECK` exactamente esas cuatro combinaciones,
 incluida `null`/`null`, en `source_files`, `source_projects`,
 `source_contexts` y `source_lessons`. La decisión del usuario se registró como
 "sufijo + convención".
+
+## ADR-013 — Capa `course/` de lectura server-only sobre el snapshot activo
+
+Status: Accepted
+
+La UI no consulta `source/` ni escribe SQL propio: lee a través de una capa
+nueva `platform/src/course/` marcada con `server-only`, que usa el mismo
+esquema Drizzle en modo solo lectura. El **snapshot activo** es la fila de
+`source_snapshots` con `status IN ('complete','complete_with_errors')` más
+reciente por `imported_at`. Sin snapshot activo o sin `DATABASE_URL`, todas las
+funciones devuelven `null`/`[]` (nunca lanzan por falta de configuración) y la
+UI muestra el estado vacío neutro; los errores reales de conexión se propagan
+con mensaje redactado (`src/lib/redact.ts`) para `error.tsx`. El pool `pg` se
+crea de forma perezosa (importar el módulo no conecta), de modo que `next build`
+compila sin `DATABASE_URL`.
+
+Orden, títulos, descripciones y variantes de idioma se derivan **en lectura**
+con funciones puras desde `raw_content`/paths, sin escribir en la base ni
+reingestar: se respetan la inmutabilidad y la idempotencia de M1. Los
+subproyectos anidados (carpetas hijas directas de un proyecto de primer nivel
+que contienen `learn.json`) también se derivan en lectura desde `source_files`
+y se muestran en la vista del proyecto padre y en una ruta propia, sin filas
+nuevas en `source_projects`. `learn.json` no se parsea ni se muestra en H2
+(queda como material auxiliar para H4); ninguna derivación inventa contenido.
+
+## ADR-014 — Render Markdown fiel server-side con allowlist de saneado
+
+Status: Accepted
+
+El Markdown del corpus y su HTML embebido real se renderizan en un Server
+Component (`SourceMarkdown`) con el pipeline
+`remarkPlugins=[remarkGfm, remarkFrontmatter]` y
+`rehypePlugins=[rehypeRaw, [rehypeSanitize, schema]]`. `remark-gfm` cubre
+tablas y task lists; `remark-frontmatter` oculta el YAML de las lecciones
+(nunca se muestra como texto); `rehype-raw` parsea el HTML real (`details`,
+`table`, `div`, `img`, `br`) y `rehype-sanitize` aplica una allowlist cerrada
+antes de renderizar.
+
+La allowlist permite `p`, `h1`..`h6`, `ul`, `ol`, `li`, `blockquote`, `pre`,
+`code`, `em`, `strong`, `del`, `a[href|title]`,
+`img[src|alt|title|width|height]`, `hr`, `br`, `table`/`thead`/`tbody`/`tr`/
+`th`/`td`, `details`, `summary`,
+`input[type=checkbox][checked][disabled]`, `span` y `div`, con protocolos
+`http`, `https`, `mailto` y relativos; prohíbe `script`, `style`, `iframe`,
+`object`/`embed`, atributos `on*` y URLs `javascript:`/`data:`. El corpus es de
+un repo público de terceros: sin `rehype-raw` el HTML se vería como texto
+(infiel) y sin saneado habría XSS almacenado, por lo que `skipHtml` no es
+aceptable. No se usa `dangerouslySetInnerHTML` ni resaltado de sintaxis ni TOC
+en H2. Toda URL de `a[href]`/`img[src]` pasa por `resolveUrl` después del
+saneado; el frontmatter no se renderiza.
+
+## ADR-015 — Política única de enlaces relativos
+
+Status: Accepted
+
+Toda referencia relativa de un documento se resuelve con una única política,
+construida una vez por snapshot (mapa de paths a `blob_sha`/`binary_reference`
+memoizado, sin consultas por enlace):
+
+1. **Tiene vista interna** (documento preferido o variante de una unidad, o
+   documento de un contexto): ruta interna de `src/course/routes.ts`.
+2. **Existe en el snapshot pero no tiene vista**: URL de GitHub `blob`/`tree`
+   **pinneada al commit**; un binario usa su `binary_reference` (raw).
+3. **No existe en el snapshot**: se muestra como **roto** (span sin `href`,
+   `aria-disabled="true"`, estilo visible y
+   `title="Enlace roto en el origen: <rawHref>"`), conservando el texto literal
+   del enlace. Nunca se "arregla" ni se redirige a un destino inventado; una
+   imagen rota muestra su `alt` literal marcado como roto.
+4. **Externo** (`http(s)`, `mailto`): intacto, con `target="_blank"`,
+   `rel="noopener noreferrer"` y aviso accesible de salida.
+5. **Anclas** (`#...`): se dejan tal cual.
+
+Consecuencia: los enlaces rotos del corpus (Apéndice B del plan de M2) quedan
+visibles como tales; ninguna URL apunta a `main`, siempre al commit importado.
+
+## ADR-016 — Assets vía `binary_reference` pinneada, sin proxy ni `next/image`
+
+Status: Accepted; parcialmente reemplazado por ADR-018 (el servido de assets
+pasa a ser propio desde `source_blobs`).
+
+El store no guarda los bytes binarios: cada binario (118/118 verificados) tiene
+solo una `binary_reference` con forma
+`https://raw.githubusercontent.com/<owner>/<name>/<commit>/<path>`. H2 la usa
+directamente: imágenes inline con
+`<img loading="lazy" decoding="async" referrerPolicy="no-referrer">` y el resto
+de assets (PDF, CSV, JSON…) como enlace de descarga a esa misma URL.
+
+No se añade route handler ni proxy en H2: los bytes no están en el store, así
+que un proxy solo reenviaría la descarga de GitHub añadiendo latencia, punto de
+fallo y consumo de red del servidor, y la URL ya es inmutable (commit, no rama)
+y cacheable. `next/image` queda descartado (implicaría fetch remoto en servidor
+y `remotePatterns`). Visores de PDF/CSV y servido propio quedan como candidatos
+de H4/BACKLOG (`/api/source-asset/[...path]`).
+
+## ADR-017 — Orden y títulos literales derivados de la fuente
+
+Status: Accepted
+
+Ningún título, descripción, orden, sección, nivel, duración ni etiqueta se
+inventa ni se escribe en código: todo sale del snapshot importado o de una
+derivación literal de él. El título de una unidad es, en este orden, la
+etiqueta literal del enlace del README de proyectos (emparejando por slug), el
+primer H1 del documento preferido (sin frontmatter) o el slug del `source_path`.
+Las descripciones existen solo para proyectos/subproyectos listados y son el
+texto literal de la entrada del README en el idioma pedido.
+
+El orden de `/projects` proviene de `content/projects/README.md` (primera
+aparición del enlace por slug; se conservan los encabezados `##` literales);
+los proyectos no listados van al final por `source_path` con sección nula. Los
+contextos y lecciones se listan por `source_path` (el README de contextos no es
+un orden canónico: contiene enlaces rotos y no cubre todas las carpetas). El
+idioma inicial es el documento preferido (español cuando existe) según ADR-012 y
+el selector solo aparece con dos o más variantes reales; no se traduce nada.
+
+## ADR-018 — Independencia de 4Geeks en tiempo de ejecución
+
+Status: Accepted (reemplaza la parte de servido de assets de ADR-016)
+
+Requisito del usuario (2026-10-02): la plataforma debe seguir funcionando aunque
+desaparezca el acceso al bootcamp y a los repos/hosts de 4Geeks. Hasta ahora
+había tres dependencias en runtime: los 118 binarios se cargaban de
+`raw.githubusercontent.com` vía `binary_reference`; los enlaces "Ver en GitHub" y
+los directorios apuntaban a `github.com/4GeeksAcademy/...`; y la ingesta usaba
+por defecto el repositorio de 4Geeks.
+
+Decisión:
+
+- **Bytes en Postgres.** Nueva tabla `source_blobs`
+  (`blob_sha` PK, `bytes bytea NOT NULL`, `byte_size`), direccionada por
+  contenido: la clave es el SHA-1 git del blob, de modo que un mismo binario
+  importado en varios snapshots comparte una sola fila. La ingesta guarda los
+  bytes junto a `source_files` (primero los blobs, con verificación
+  `gitBlobSha(bytes) === blob_sha` y `ON CONFLICT (blob_sha) DO NOTHING`), y el
+  CLI `blobs:backfill` rellena los snapshots ya importados sin bytes
+  (`--dry-run` y `--from-dir <checkout local>` disponibles).
+- **Servido propio.** La UI deja de usar `binary_reference` para cargar
+  assets: sirve los bytes desde la propia app en `GET /source-files/<path>`
+  (route handler: binario → `source_blobs`; texto sin vista interna →
+  `raw_content` crudo). Sin proxy a GitHub y sin `next/image`.
+- **Espejo configurable.** Los enlaces "Ver en GitHub" y a directorios usan
+  `SOURCE_MIRROR_REPOSITORY` (repo espejo; si no está definido, el repo del
+  snapshot). La **procedencia textual sigue diciendo la verdad**: repositorio
+  de origen, commit, path y blob del snapshot; `binary_reference` se conserva
+  como dato de procedencia aunque la UI ya no lo use para cargar.
+- **Alcance.** El archivado de las lecciones externas de `4geeks.com` no entra
+  en esta ronda: queda para el hito de autonomía.
+
+Consecuencias: la base pasa a almacenar ≈6,6 MB de binarios (máx. 0,4 MB por
+archivo); `source_blobs` es global (sin FK a snapshots) y no se borra en cascada;
+los binarios de un snapshot antiguo cuyos bytes no se hayan backfilleado se
+sirven solo si el backfill se ejecutó para ese `blob_sha`.
+
+## ADR-019 — Idioma global de la interfaz
+
+Status: Accepted (reemplaza el selector por documento de ADR-012/§3.6 del plan
+en lo relativo a la UI; no cambia la semántica de idioma de ADR-012)
+
+La interfaz tiene un único selector pequeño ES/EN en la cabecera del shell y
+toda la app sigue esa elección: en español solo se ve lo español y en inglés
+solo lo inglés (listas, títulos, descripciones del README de proyectos,
+documentos mostrados y lista de documentos de cada contexto: de cada par de
+variantes solo la del idioma elegido), incluidos los copys neutros de interfaz.
+El idioma se guarda en la cookie `lang` (path `/`, 1 año, `SameSite=Lax`); la
+ruta `GET /preferences/language/[lang]` valida el valor y redirige 303 a un
+`next` interno (si no es un path relativo válido, a `/projects`). Por defecto:
+`es`; un valor inválido o ausente también cae a `es`. No hay selectores por
+documento o página, y `?lang` en URLs antiguas se ignora (sin 404).
+
+Si un documento no tiene variante en el idioma elegido, se muestra la que exista
+con una nota de interfaz pequeña y neutra ("Solo disponible en inglés" / "Only
+available in Spanish"); los archivos sin idioma (`null`) se muestran tal cual.
+Nada se traduce ni se inventa: el contenido educativo sigue saliendo literal del
+snapshot y las variantes son las de ADR-012.
