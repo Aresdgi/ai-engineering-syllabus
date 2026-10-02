@@ -1,0 +1,654 @@
+{
+  "id": "11c08e49-a5cc-4bb1-ab3b-f2fcd9791b15",
+  "prevId": "a072e2fa-9717-49dd-b4f0-4c1413662bae",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.source_blobs": {
+      "name": "source_blobs",
+      "schema": "",
+      "columns": {
+        "blob_sha": {
+          "name": "blob_sha",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "bytes": {
+          "name": "bytes",
+          "type": "bytea",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "byte_size": {
+          "name": "byte_size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.source_contexts": {
+      "name": "source_contexts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "snapshot_id": {
+          "name": "snapshot_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_path": {
+          "name": "source_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "preferred_readme_path": {
+          "name": "preferred_readme_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "language": {
+          "name": "language",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "language_evidence": {
+          "name": "language_evidence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "source_contexts_snapshot_id_source_snapshots_id_fk": {
+          "name": "source_contexts_snapshot_id_source_snapshots_id_fk",
+          "tableFrom": "source_contexts",
+          "tableTo": "source_snapshots",
+          "columnsFrom": [
+            "snapshot_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "source_contexts_snapshot_source_path_unique": {
+          "name": "source_contexts_snapshot_source_path_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "snapshot_id",
+            "source_path"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "source_contexts_language_evidence_allowed": {
+          "name": "source_contexts_language_evidence_allowed",
+          "value": "(\"source_contexts\".\"language\" is null and \"source_contexts\".\"language_evidence\" is null) or (\"source_contexts\".\"language\" is not null and \"source_contexts\".\"language_evidence\" is not null and ((\"source_contexts\".\"language\" = 'es' and \"source_contexts\".\"language_evidence\" = 'suffix') or (\"source_contexts\".\"language\" = 'en' and \"source_contexts\".\"language_evidence\" = 'suffix') or (\"source_contexts\".\"language\" = 'en' and \"source_contexts\".\"language_evidence\" = 'pair-convention')))"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.source_files": {
+      "name": "source_files",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "snapshot_id": {
+          "name": "snapshot_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "path": {
+          "name": "path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "blob_sha": {
+          "name": "blob_sha",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "media_type": {
+          "name": "media_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "language": {
+          "name": "language",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "language_evidence": {
+          "name": "language_evidence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "raw_content": {
+          "name": "raw_content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "binary_reference": {
+          "name": "binary_reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "source_files_snapshot_id_source_snapshots_id_fk": {
+          "name": "source_files_snapshot_id_source_snapshots_id_fk",
+          "tableFrom": "source_files",
+          "tableTo": "source_snapshots",
+          "columnsFrom": [
+            "snapshot_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "source_files_snapshot_path_unique": {
+          "name": "source_files_snapshot_path_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "snapshot_id",
+            "path"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "source_files_content_exactly_one": {
+          "name": "source_files_content_exactly_one",
+          "value": "(\"source_files\".\"raw_content\" is null) <> (\"source_files\".\"binary_reference\" is null)"
+        },
+        "source_files_language_evidence_allowed": {
+          "name": "source_files_language_evidence_allowed",
+          "value": "(\"source_files\".\"language\" is null and \"source_files\".\"language_evidence\" is null) or (\"source_files\".\"language\" is not null and \"source_files\".\"language_evidence\" is not null and ((\"source_files\".\"language\" = 'es' and \"source_files\".\"language_evidence\" = 'suffix') or (\"source_files\".\"language\" = 'en' and \"source_files\".\"language_evidence\" = 'suffix') or (\"source_files\".\"language\" = 'en' and \"source_files\".\"language_evidence\" = 'pair-convention')))"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.source_import_errors": {
+      "name": "source_import_errors",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "snapshot_id": {
+          "name": "snapshot_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_path": {
+          "name": "source_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "error_kind": {
+          "name": "error_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message": {
+          "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "detail": {
+          "name": "detail",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "source_import_errors_snapshot_id_idx": {
+          "name": "source_import_errors_snapshot_id_idx",
+          "columns": [
+            {
+              "expression": "snapshot_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "source_import_errors_snapshot_id_source_snapshots_id_fk": {
+          "name": "source_import_errors_snapshot_id_source_snapshots_id_fk",
+          "tableFrom": "source_import_errors",
+          "tableTo": "source_snapshots",
+          "columnsFrom": [
+            "snapshot_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "source_import_errors_kind_allowed": {
+          "name": "source_import_errors_kind_allowed",
+          "value": "\"source_import_errors\".\"error_kind\" in ('repository-resolution-failed', 'commit-resolution-failed', 'tree-truncated', 'tree-read-failed', 'file-read-failed', 'file-hash-mismatch', 'file-decode-failed', 'storage-write-failed', 'unexpected-error')"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.source_lessons": {
+      "name": "source_lessons",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "snapshot_id": {
+          "name": "snapshot_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_path": {
+          "name": "source_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "preferred_readme_path": {
+          "name": "preferred_readme_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "language": {
+          "name": "language",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "language_evidence": {
+          "name": "language_evidence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "source_lessons_snapshot_id_source_snapshots_id_fk": {
+          "name": "source_lessons_snapshot_id_source_snapshots_id_fk",
+          "tableFrom": "source_lessons",
+          "tableTo": "source_snapshots",
+          "columnsFrom": [
+            "snapshot_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "source_lessons_snapshot_source_path_unique": {
+          "name": "source_lessons_snapshot_source_path_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "snapshot_id",
+            "source_path"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "source_lessons_language_evidence_allowed": {
+          "name": "source_lessons_language_evidence_allowed",
+          "value": "(\"source_lessons\".\"language\" is null and \"source_lessons\".\"language_evidence\" is null) or (\"source_lessons\".\"language\" is not null and \"source_lessons\".\"language_evidence\" is not null and ((\"source_lessons\".\"language\" = 'es' and \"source_lessons\".\"language_evidence\" = 'suffix') or (\"source_lessons\".\"language\" = 'en' and \"source_lessons\".\"language_evidence\" = 'suffix') or (\"source_lessons\".\"language\" = 'en' and \"source_lessons\".\"language_evidence\" = 'pair-convention')))"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.source_projects": {
+      "name": "source_projects",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "snapshot_id": {
+          "name": "snapshot_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_path": {
+          "name": "source_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "canonical_order": {
+          "name": "canonical_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "preferred_readme_path": {
+          "name": "preferred_readme_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "language": {
+          "name": "language",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "language_evidence": {
+          "name": "language_evidence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "source_projects_snapshot_id_source_snapshots_id_fk": {
+          "name": "source_projects_snapshot_id_source_snapshots_id_fk",
+          "tableFrom": "source_projects",
+          "tableTo": "source_snapshots",
+          "columnsFrom": [
+            "snapshot_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "source_projects_snapshot_source_path_unique": {
+          "name": "source_projects_snapshot_source_path_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "snapshot_id",
+            "source_path"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "source_projects_language_evidence_allowed": {
+          "name": "source_projects_language_evidence_allowed",
+          "value": "(\"source_projects\".\"language\" is null and \"source_projects\".\"language_evidence\" is null) or (\"source_projects\".\"language\" is not null and \"source_projects\".\"language_evidence\" is not null and ((\"source_projects\".\"language\" = 'es' and \"source_projects\".\"language_evidence\" = 'suffix') or (\"source_projects\".\"language\" = 'en' and \"source_projects\".\"language_evidence\" = 'suffix') or (\"source_projects\".\"language\" = 'en' and \"source_projects\".\"language_evidence\" = 'pair-convention')))"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.source_repositories": {
+      "name": "source_repositories",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner": {
+          "name": "owner",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "canonical_url": {
+          "name": "canonical_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "default_branch": {
+          "name": "default_branch",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "source_repositories_owner_name_unique": {
+          "name": "source_repositories_owner_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "owner",
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.source_snapshots": {
+      "name": "source_snapshots",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "repository_id": {
+          "name": "repository_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ref": {
+          "name": "ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "commit_sha": {
+          "name": "commit_sha",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "imported_at": {
+          "name": "imported_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'importing'"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "source_snapshots_repository_id_source_repositories_id_fk": {
+          "name": "source_snapshots_repository_id_source_repositories_id_fk",
+          "tableFrom": "source_snapshots",
+          "tableTo": "source_repositories",
+          "columnsFrom": [
+            "repository_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "source_snapshots_repository_commit_unique": {
+          "name": "source_snapshots_repository_commit_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "repository_id",
+            "commit_sha"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "source_snapshots_status_allowed": {
+          "name": "source_snapshots_status_allowed",
+          "value": "\"source_snapshots\".\"status\" in ('importing', 'complete', 'complete_with_errors', 'failed')"
+        }
+      },
+      "isRLSEnabled": true
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

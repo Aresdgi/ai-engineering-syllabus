@@ -23,7 +23,15 @@ import {
 import {
   fixtureAbsolutePath,
   loadFixtureManifest,
+  loadFixtureTree,
 } from "../classify/fixture-tree.test-helper";
+import {
+  buildSourceContexts,
+  buildSourceLessons,
+  buildSourceProjects,
+  listFirstLevelDirectories,
+} from "../classify/indexes";
+import { classifySourceMedia } from "../classify/media";
 import {
   FixtureSourceReader,
   type FixtureFileOverride,
@@ -39,6 +47,7 @@ const MIGRATIONS_FOLDER = fileURLToPath(
 );
 
 const TABLE_NAMES = [
+  "source_blobs",
   "source_contexts",
   "source_files",
   "source_import_errors",
@@ -88,21 +97,51 @@ const LESSON_ES = findFixturePath(/^content\/lessons\/[^/]+\/[^/]+\.es\.md$/);
 const LESSON_DIR = LESSON_ES.replace(/\/[^/]+\.es\.md$/, "");
 const LESSON_PAIR = LESSON_ES.replace(/\.es\.md$/, ".md");
 
-function firstLevelDirectory(path: string, root: string): string {
-  return `${root}/${path.slice(root.length + 1).split("/")[0]}`;
-}
+const FIXTURE_TREE = loadFixtureTree().tree;
 
-const EXPECTED_PROJECT_DIRS = new Set([
-  PROJECT_DIR,
-  firstLevelDirectory(PROJECT_PNG, "content/projects"),
-  firstLevelDirectory(SOLUTION_README, "content/projects"),
-]);
+/**
+ * Conteos esperados derivados del manifiesto en runtime: añadir fixtures
+ * verbatim no debe romper los tests de integración de M1 (ADR-009/AC-0.10).
+ */
+const FIXTURE_MEDIA_KINDS = manifest.fixtures.map((fixture) => {
+  const bytes = new Uint8Array(readFileSync(fixtureAbsolutePath(fixture)));
+  return classifySourceMedia(fixture.path, bytes).isBinary ? "binary" : "text";
+});
 
-const EXPECTED_CONTEXT_DIRS = new Set([
-  firstLevelDirectory(CONTEXT_ES, "content/contexts"),
-  firstLevelDirectory(CONTEXT_EN_SUFFIX, "content/contexts"),
-  firstLevelDirectory(PDF, "content/contexts"),
-]);
+const BINARY_FIXTURES = manifest.fixtures.filter(
+  (_fixture, index) => FIXTURE_MEDIA_KINDS[index] === "binary",
+);
+
+const EXPECTED_FILE_COUNTS = {
+  total: manifest.fixtures.length,
+  text: FIXTURE_MEDIA_KINDS.filter((kind) => kind === "text").length,
+  binary: FIXTURE_MEDIA_KINDS.filter((kind) => kind === "binary").length,
+  byRoot: {
+    projects: manifest.fixtures.filter((fixture) =>
+      fixture.path.startsWith("content/projects/"),
+    ).length,
+    contexts: manifest.fixtures.filter((fixture) =>
+      fixture.path.startsWith("content/contexts/"),
+    ).length,
+    lessons: manifest.fixtures.filter((fixture) =>
+      fixture.path.startsWith("content/lessons/"),
+    ).length,
+  },
+};
+
+const EXPECTED_INDEX_COUNTS = {
+  projects: buildSourceProjects(FIXTURE_TREE, "snapshot-test").length,
+  contexts: buildSourceContexts(FIXTURE_TREE, "snapshot-test").length,
+  lessons: buildSourceLessons(FIXTURE_TREE, "snapshot-test").length,
+};
+
+const EXPECTED_PROJECT_DIRS = new Set(
+  listFirstLevelDirectories(FIXTURE_TREE, "content/projects"),
+);
+
+const EXPECTED_CONTEXT_DIRS = new Set(
+  listFirstLevelDirectories(FIXTURE_TREE, "content/contexts"),
+);
 
 async function setupTestContext() {
   const client = new PGlite();
@@ -220,7 +259,7 @@ describe("ingestSnapshot sobre PGlite con los fixtures reales", () => {
     await context.client.exec(TRUNCATE_ALL);
   });
 
-  it("importa los 11 fixtures verbatim, clasifica idioma/media y construye índices mínimos (AC-1.1..AC-1.10)", async () => {
+  it("importa todos los fixtures verbatim, clasifica idioma/media y construye índices mínimos (AC-1.1..AC-1.10)", async () => {
     const result = await ingestSnapshot({
       reader: new FixtureSourceReader(),
       store: context.store,
@@ -233,13 +272,8 @@ describe("ingestSnapshot sobre PGlite con los fixtures reales", () => {
     expect(result.commitSha).toBe(manifest.fixtures[0]?.commit);
     expect(result.errors).toEqual([]);
     expect(result.counts).toEqual({
-      files: {
-        total: 11,
-        text: 9,
-        binary: 2,
-        byRoot: { projects: 5, contexts: 4, lessons: 2 },
-      },
-      indexes: { projects: 3, contexts: 3, lessons: 1 },
+      files: EXPECTED_FILE_COUNTS,
+      indexes: EXPECTED_INDEX_COUNTS,
       errors: 0,
     });
     expect(await selectSnapshotStatus(context, result.snapshot.id)).toBe(
@@ -247,7 +281,7 @@ describe("ingestSnapshot sobre PGlite con los fixtures reales", () => {
     );
 
     const rows = await selectFileRows(context, result.snapshot.id);
-    expect(rows).toHaveLength(11);
+    expect(rows).toHaveLength(EXPECTED_FILE_COUNTS.total);
     const byPath = new Map(rows.map((row) => [row.path, row]));
 
     for (const fixture of manifest.fixtures) {
@@ -307,6 +341,26 @@ describe("ingestSnapshot sobre PGlite con los fixtures reales", () => {
       expect(byPath.get(path)?.media_type, `media_type en ${path}`).toBe(
         expected,
       );
+    }
+
+    const blobRows = await context.client.query<{
+      blob_sha: string;
+      byte_size: number;
+      bytes: Uint8Array;
+    }>("select blob_sha, byte_size, bytes from source_blobs order by blob_sha");
+    expect(blobRows.rows.map((row) => row.blob_sha)).toEqual(
+      [...new Set(BINARY_FIXTURES.map((fixture) => fixture.blob_sha))].sort(),
+    );
+    for (const row of blobRows.rows) {
+      const fixture = BINARY_FIXTURES.find(
+        (entry) => entry.blob_sha === row.blob_sha,
+      );
+      if (!fixture) {
+        throw new Error(`blob inesperado en source_blobs: ${row.blob_sha}`);
+      }
+      const bytes = fixtureBytes(fixture.path);
+      expect(row.byte_size).toBe(bytes.byteLength);
+      expect(Buffer.from(row.bytes).equals(Buffer.from(bytes))).toBe(true);
     }
 
     const projects = await context.client.query<{
@@ -384,7 +438,9 @@ describe("ingestSnapshot sobre PGlite con los fixtures reales", () => {
     expect(second.counts).toBeNull();
     expect(second.errors).toEqual([]);
     expect(await countRows(context, "source_snapshots")).toBe(1);
-    expect(await countRows(context, "source_files")).toBe(11);
+    expect(await countRows(context, "source_files")).toBe(
+      EXPECTED_FILE_COUNTS.total,
+    );
     expect(await dumpTables(context)).toEqual(before);
   });
 
@@ -403,7 +459,7 @@ describe("ingestSnapshot sobre PGlite con los fixtures reales", () => {
     expect(second.snapshot.id).not.toBe(first.snapshot.id);
     expect(second.commitSha).toBe(COMMIT_B);
     expect(second.status).toBe("complete");
-    expect(second.counts?.files.total).toBe(11);
+    expect(second.counts?.files.total).toBe(EXPECTED_FILE_COUNTS.total);
     expect(await countRows(context, "source_snapshots")).toBe(2);
 
     expect(await snapshotRows(context, first.snapshot.id)).toEqual(rowsBefore);
@@ -444,14 +500,13 @@ describe("ingestSnapshot sobre PGlite con los fixtures reales", () => {
 
     const result = await ingestSnapshot({ reader, store: context.store });
 
+    const failedPaths = [mismatchPath, readErrorPath, decodeErrorPath];
+    const importedTotal = EXPECTED_FILE_COUNTS.total - failedPaths.length;
+
     expect(result.status).toBe("complete_with_errors");
     expect(result.counts?.errors).toBe(3);
-    expect(result.counts?.files.total).toBe(8);
-    expect(result.counts?.indexes).toEqual({
-      projects: 3,
-      contexts: 3,
-      lessons: 1,
-    });
+    expect(result.counts?.files.total).toBe(importedTotal);
+    expect(result.counts?.indexes).toEqual(EXPECTED_INDEX_COUNTS);
 
     const errorKeys = result.errors
       .map((error) => `${error.errorKind}:${error.sourcePath}`)
@@ -465,9 +520,9 @@ describe("ingestSnapshot sobre PGlite con los fixtures reales", () => {
     );
 
     const rows = await selectFileRows(context, result.snapshot.id);
-    expect(rows).toHaveLength(8);
+    expect(rows).toHaveLength(importedTotal);
     const importedPaths = new Set(rows.map((row) => row.path));
-    for (const failedPath of [mismatchPath, readErrorPath, decodeErrorPath]) {
+    for (const failedPath of failedPaths) {
       expect(importedPaths.has(failedPath)).toBe(false);
     }
 
@@ -485,6 +540,38 @@ describe("ingestSnapshot sobre PGlite con los fixtures reales", () => {
     );
     expect(await selectSnapshotStatus(context, result.snapshot.id)).toBe(
       "complete_with_errors",
+    );
+  });
+
+  it("un binario con hash incoherente se registra sin fila ni bytes en source_blobs (ADR-018)", async () => {
+    const fakeSha = "0".repeat(40);
+    const reader = new FixtureSourceReader({
+      transformTree: (tree) => ({
+        ...tree,
+        entries: tree.entries.map((entry) =>
+          entry.type === "blob" && entry.path === PROJECT_PNG
+            ? { ...entry, blobSha: fakeSha }
+            : entry,
+        ),
+      }),
+    });
+
+    const result = await ingestSnapshot({ reader, store: context.store });
+
+    expect(result.status).toBe("complete_with_errors");
+    expect(
+      result.errors.map((error) => `${error.errorKind}:${error.sourcePath}`),
+    ).toContain(`file-hash-mismatch:${PROJECT_PNG}`);
+
+    const fileRows = await selectFileRows(context, result.snapshot.id);
+    expect(fileRows.some((row) => row.path === PROJECT_PNG)).toBe(false);
+
+    const blobRows = await context.client.query<{ blob_sha: string }>(
+      "select blob_sha from source_blobs",
+    );
+    expect(blobRows.rows.map((row) => row.blob_sha)).not.toContain(fakeSha);
+    expect(blobRows.rows.length).toBe(
+      new Set(BINARY_FIXTURES.map((fixture) => fixture.blob_sha)).size - 1,
     );
   });
 

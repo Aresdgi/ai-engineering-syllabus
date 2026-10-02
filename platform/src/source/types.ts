@@ -169,6 +169,32 @@ export type SourceFile = Readonly<{ id: SourceFileId }> &
 
 export type NewSourceFile = SourceFileFields & SourceFileContent;
 
+/**
+ * Bytes de un binario para `source_blobs` (M2, ADR-018). Direccionado por
+ * contenido: `blobSha` es el SHA-1 git de `bytes` y `byteSize` su longitud.
+ * El store verifica la coherencia antes de escribir y nunca sustituye una fila
+ * existente (dedupe entre snapshots).
+ */
+export type NewSourceBlob = Readonly<{
+  blobSha: SourceBlobSha;
+  bytes: Uint8Array;
+  byteSize: number;
+}>;
+
+/** Snapshot activo resuelto para el backfill de binarios (M2, ADR-018). */
+export type ActiveSourceSnapshot = Readonly<{
+  snapshotId: SourceSnapshotId;
+  commitSha: SourceCommitSha;
+  owner: string;
+  name: string;
+}>;
+
+/** Fila binaria (`binary_reference`) del snapshot, sin `raw_content`. */
+export type SourceBinaryFileEntry = Readonly<{
+  path: SourcePath;
+  blobSha: SourceBlobSha;
+}>;
+
 // --- Índices mínimos (sin título ni orden en M1) ----------------------------
 
 /**
@@ -299,6 +325,14 @@ export interface SourceStore {
   ): Promise<SourceSnapshot | null>;
   createSnapshot(snapshot: NewSourceSnapshot): Promise<SourceSnapshot>;
   upsertFiles(files: readonly NewSourceFile[]): Promise<void>;
+  /**
+   * Inserta los bytes de binarios en `source_blobs` con
+   * `ON CONFLICT (blob_sha) DO NOTHING` (idempotente, dedupe entre snapshots).
+   * La verificación `gitBlobSha(bytes) === blobSha` corre antes, en la
+   * ingesta/backfill; un sha incoherente se registra como error y nunca llega
+   * aquí.
+   */
+  upsertBlobs(blobs: readonly NewSourceBlob[]): Promise<void>;
   upsertProjects(projects: readonly NewSourceProject[]): Promise<void>;
   upsertContexts(contexts: readonly NewSourceContext[]): Promise<void>;
   upsertLessons(lessons: readonly NewSourceLesson[]): Promise<void>;

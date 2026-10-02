@@ -18,17 +18,21 @@
  *   contenido (AC-1.13).
  */
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import {
   SOURCE_SNAPSHOT_STATUSES,
+  type ActiveSourceSnapshot,
+  type NewSourceBlob,
   type NewSourceContext,
   type NewSourceFile,
   type NewSourceImportError,
   type NewSourceLesson,
   type NewSourceProject,
   type NewSourceSnapshot,
+  type SourceBinaryFileEntry,
+  type SourceBlobSha,
   type SourceCommitSha,
   type SourceRepositoryDescriptor,
   type SourceRepositoryId,
@@ -38,6 +42,7 @@ import {
   type SourceStore,
 } from "../types";
 import {
+  sourceBlobs,
   sourceContexts,
   sourceFiles,
   sourceImportErrors,
@@ -107,6 +112,32 @@ function toFileInsert(file: NewSourceFile): typeof sourceFiles.$inferInsert {
     rawContent: file.rawContent,
     binaryReference: file.binaryReference,
   };
+}
+
+function toBlobInsert(blob: NewSourceBlob): typeof sourceBlobs.$inferInsert {
+  if (blob.bytes.byteLength !== blob.byteSize) {
+    throw new Error(
+      `byte_size incoherente para el blob ${blob.blobSha}: declarado ${blob.byteSize}, real ${blob.bytes.byteLength}`,
+    );
+  }
+  return {
+    blobSha: blob.blobSha,
+    bytes: blob.bytes,
+    byteSize: blob.byteSize,
+  };
+}
+
+/** Deduplica por `blob_sha` conservando el primer candidato (direccionamiento por contenido). */
+function dedupeBlobs(
+  blobs: readonly NewSourceBlob[],
+): readonly NewSourceBlob[] {
+  const bySha = new Map<SourceBlobSha, NewSourceBlob>();
+  for (const blob of blobs) {
+    if (!bySha.has(blob.blobSha)) {
+      bySha.set(blob.blobSha, blob);
+    }
+  }
+  return [...bySha.values()];
 }
 
 function toProjectInsert(
@@ -263,6 +294,78 @@ export class PostgresSourceStore<
         }
       });
     }
+  }
+
+  async upsertBlobs(blobs: readonly NewSourceBlob[]): Promise<void> {
+    const unique = dedupeBlobs(blobs);
+    if (unique.length === 0) {
+      return;
+    }
+    await this.db.transaction(async (tx) => {
+      for (const chunk of chunkRows(unique, INSERT_CHUNK_SIZE)) {
+        await tx
+          .insert(sourceBlobs)
+          .values(chunk.map(toBlobInsert))
+          .onConflictDoNothing({ target: sourceBlobs.blobSha });
+      }
+    });
+  }
+
+  /** Snapshot activo (último terminado) con su repositorio; `null` si no hay. */
+  async findActiveSnapshot(): Promise<ActiveSourceSnapshot | null> {
+    const [row] = await this.db
+      .select({
+        snapshotId: sourceSnapshots.id,
+        commitSha: sourceSnapshots.commitSha,
+        owner: sourceRepositories.owner,
+        name: sourceRepositories.name,
+      })
+      .from(sourceSnapshots)
+      .innerJoin(
+        sourceRepositories,
+        eq(sourceRepositories.id, sourceSnapshots.repositoryId),
+      )
+      .where(
+        inArray(sourceSnapshots.status, ["complete", "complete_with_errors"]),
+      )
+      .orderBy(desc(sourceSnapshots.importedAt))
+      .limit(1);
+
+    return row ?? null;
+  }
+
+  /** Archivos binarios (`binary_reference`) del snapshot, ordenados por path. */
+  async listBinaryFiles(
+    snapshotId: SourceSnapshotId,
+  ): Promise<readonly SourceBinaryFileEntry[]> {
+    return this.db
+      .select({ path: sourceFiles.path, blobSha: sourceFiles.blobSha })
+      .from(sourceFiles)
+      .where(
+        and(
+          eq(sourceFiles.snapshotId, snapshotId),
+          isNotNull(sourceFiles.binaryReference),
+        ),
+      )
+      .orderBy(sourceFiles.path);
+  }
+
+  /** Subconjunto de `blobShas` que ya existe en `source_blobs`. */
+  async findExistingBlobShas(
+    blobShas: readonly SourceBlobSha[],
+  ): Promise<ReadonlySet<SourceBlobSha>> {
+    const unique = [...new Set(blobShas)];
+    const existing = new Set<SourceBlobSha>();
+    for (const chunk of chunkRows(unique, INSERT_CHUNK_SIZE)) {
+      const rows = await this.db
+        .select({ blobSha: sourceBlobs.blobSha })
+        .from(sourceBlobs)
+        .where(inArray(sourceBlobs.blobSha, chunk));
+      for (const row of rows) {
+        existing.add(row.blobSha);
+      }
+    }
+    return existing;
   }
 
   async upsertProjects(projects: readonly NewSourceProject[]): Promise<void> {

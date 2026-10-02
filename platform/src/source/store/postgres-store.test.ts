@@ -22,6 +22,7 @@ import {
 } from "vitest";
 
 import type {
+  NewSourceBlob,
   NewSourceContext,
   NewSourceFile,
   NewSourceImportError,
@@ -45,6 +46,7 @@ const MIGRATIONS_FOLDER = fileURLToPath(
 );
 
 const TABLE_NAMES = [
+  "source_blobs",
   "source_contexts",
   "source_files",
   "source_import_errors",
@@ -145,6 +147,25 @@ function binaryFile(
   };
 }
 
+const BLOB_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x00, 0xff, 0x0a]);
+
+function newBlob(blobSha: string, bytes = BLOB_BYTES): NewSourceBlob {
+  return { blobSha, bytes: new Uint8Array(bytes), byteSize: bytes.byteLength };
+}
+
+type BlobRow = {
+  blob_sha: string;
+  bytes: Uint8Array;
+  byte_size: number;
+};
+
+async function selectBlobs(context: TestContext): Promise<BlobRow[]> {
+  const result = await context.client.query<BlobRow>(
+    "select blob_sha, bytes, byte_size from source_blobs order by blob_sha",
+  );
+  return result.rows;
+}
+
 async function createRepositorySnapshot(
   context: TestContext,
   commitSha: string,
@@ -227,7 +248,7 @@ describe("PostgresSourceStore sobre PGlite con las migraciones reales", () => {
     await context.client.exec(TRUNCATE_ALL);
   });
 
-  it("aplica las migraciones y crea las 7 tablas del modelo M1", async () => {
+  it("aplica las migraciones y crea las 8 tablas del modelo SOURCE", async () => {
     const result = await context.client.query<{ table_name: string }>(
       `select table_name from information_schema.tables
        where table_schema = 'public' and table_type = 'BASE TABLE'
@@ -364,6 +385,98 @@ describe("PostgresSourceStore sobre PGlite con las migraciones reales", () => {
 
     expect(await countRows(context, "source_files")).toBe(2);
     expect(secondRead).toEqual(firstRead);
+  });
+
+  it("upsertBlobs guarda bytea + byte_size y la reinserción es idempotente (ON CONFLICT DO NOTHING)", async () => {
+    await context.store.upsertBlobs([newBlob(BLOB_A)]);
+    await context.store.upsertBlobs([newBlob(BLOB_A)]);
+
+    const rows = await selectBlobs(context);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.blob_sha).toBe(BLOB_A);
+    expect(rows[0]?.byte_size).toBe(BLOB_BYTES.byteLength);
+    expect(Array.from(rows[0]?.bytes ?? [])).toEqual(Array.from(BLOB_BYTES));
+  });
+
+  it("upsertBlobs nunca sustituye los bytes de un blob existente", async () => {
+    const original = new Uint8Array([1, 2, 3]);
+    const replacement = new Uint8Array([9, 9, 9, 9]);
+
+    await context.store.upsertBlobs([newBlob(BLOB_A, original)]);
+    await context.store.upsertBlobs([newBlob(BLOB_A, replacement)]);
+
+    const rows = await selectBlobs(context);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.byte_size).toBe(original.byteLength);
+    expect(Array.from(rows[0]?.bytes ?? [])).toEqual([1, 2, 3]);
+  });
+
+  it("upsertBlobs deduplica blob_sha repetidos en el mismo lote", async () => {
+    await context.store.upsertBlobs([newBlob(BLOB_A), newBlob(BLOB_A)]);
+
+    expect(await countRows(context, "source_blobs")).toBe(1);
+  });
+
+  it("upsertBlobs rechaza un byte_size incoherente sin escribir nada", async () => {
+    await expect(
+      context.store.upsertBlobs([
+        { blobSha: BLOB_A, bytes: new Uint8Array([1]), byteSize: 2 },
+      ]),
+    ).rejects.toThrow(/byte_size incoherente/);
+
+    expect(await countRows(context, "source_blobs")).toBe(0);
+  });
+
+  it("findActiveSnapshot elige el último terminado y listBinaryFiles solo devuelve binarios", async () => {
+    const repositoryId = await context.store.upsertRepository(TEST_REPOSITORY);
+    const older = await context.store.createSnapshot({
+      repositoryId,
+      ref: "main",
+      commitSha: COMMIT_A,
+    });
+    const active = await context.store.createSnapshot({
+      repositoryId,
+      ref: "main",
+      commitSha: COMMIT_B,
+    });
+    await context.client.exec(
+      `update source_snapshots set imported_at = '2026-01-01T00:00:00Z' where id = '${older.id}'`,
+    );
+    await context.client.exec(
+      `update source_snapshots set imported_at = '2026-01-02T00:00:00Z' where id = '${active.id}'`,
+    );
+    await context.store.setSnapshotStatus(older.id, "complete");
+    await context.store.setSnapshotStatus(active.id, "complete_with_errors");
+
+    await context.store.upsertFiles([
+      textFile(active.id, PROJECT_README),
+      binaryFile(active.id, PROJECT_BINARY),
+    ]);
+
+    const found = await context.store.findActiveSnapshot();
+    expect(found).toEqual({
+      snapshotId: active.id,
+      commitSha: COMMIT_B,
+      owner: TEST_REPOSITORY.owner,
+      name: TEST_REPOSITORY.name,
+    });
+
+    const binaries = await context.store.listBinaryFiles(active.id);
+    expect(binaries).toEqual([{ path: PROJECT_BINARY, blobSha: BLOB_B }]);
+
+    await context.store.upsertBlobs([newBlob(BLOB_A)]);
+    const existing = await context.store.findExistingBlobShas([BLOB_A, BLOB_B]);
+    expect([...existing]).toEqual([BLOB_A]);
+  });
+
+  it("findActiveSnapshot devuelve null sin snapshots terminados", async () => {
+    expect(await context.store.findActiveSnapshot()).toBeNull();
+
+    const snapshot = await createRepositorySnapshot(context, COMMIT_A);
+    expect(await context.store.findActiveSnapshot()).toBeNull();
+
+    await context.store.setSnapshotStatus(snapshot.id, "importing");
+    expect(await context.store.findActiveSnapshot()).toBeNull();
   });
 
   it("UNIQUE(snapshot_id, path) rechaza duplicados directos", async () => {

@@ -8,7 +8,7 @@ El contenido educativo permanece determinado por el repositorio fuente.
 
 - [x] Hito 0 — Fundación
 - [x] Hito 1 — Ingestión fiel del repositorio
-- [ ] Hito 2 — Navegador del syllabus real
+- [x] Hito 2 — Navegador del syllabus real
 - [ ] Hito 3 — Progreso personal
 - [ ] Hito 4 — Contextos, assets y relaciones
 - [ ] Hito 5 — Búsqueda del corpus

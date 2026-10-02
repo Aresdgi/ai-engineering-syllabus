@@ -8,6 +8,11 @@
     },
     {
       "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
+      "path": "content/contexts/06-telemetry-data-pipelines/data-pipelines/CONTEXT-brasaland.es.md",
+      "blob_sha": "1c5b30c9e218b739666f736c1563948759450c78"
+    },
+    {
+      "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
       "path": "content/contexts/09-agentic-workflows/rfp-requests/trackflow/CONTEXT-trackflow-request-3.pdf",
       "blob_sha": "3465abb3d19ac49793b06e806db5c66738feeec3"
     },
@@ -33,6 +38,21 @@
     },
     {
       "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
+      "path": "content/projects/4-devs/README.md",
+      "blob_sha": "9028c6a76e5fe5cd67bba4a93bf64f180e8693cc"
+    },
+    {
+      "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
+      "path": "content/projects/README.es.md",
+      "blob_sha": "a2dfc4b791d2e5d613674d854aaeedfd431db58f"
+    },
+    {
+      "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
+      "path": "content/projects/README.md",
+      "blob_sha": "972ec8eb730e6ca243da177c08e008977d514e42"
+    },
+    {
+      "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
       "path": "content/projects/ai-eng-error-handling/.learn/preview.png",
       "blob_sha": "7645687bcbde8522dc1a10b44380da92bf32ecfd"
     },
@@ -40,6 +60,11 @@
       "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
       "path": "content/projects/ai-eng-milestone-choose-company/.learn/solution/README.md",
       "blob_sha": "49083ff748b6134f970dd635462fc7f57f032a0e"
+    },
+    {
+      "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
+      "path": "content/projects/ai-eng-milestone-data-pipeline-design/README.md",
+      "blob_sha": "70bf65ba2dd66736913e0c79d8197f2a4849d34a"
     },
     {
       "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
@@ -55,6 +80,16 @@
       "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
       "path": "content/projects/data-modeling-and-class-diagrams-digital-wallet/learn.json",
       "blob_sha": "1c008a23ca3fec63b097ea13f0e80671474b433c"
+    },
+    {
+      "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
+      "path": "content/projects/html-css-artist-landing-seo-access/README.md",
+      "blob_sha": "f0b620f87d0ec9f20caa40b10f795bff45caf1ce"
+    },
+    {
+      "commit": "962c1e5fc8ebad273abaa348fb3d161568ce8707",
+      "path": "content/projects/simple-dashboard-tailwind-css/README.md",
+      "blob_sha": "8a14da8a6ebc65293773db723540936b0a074e9d"
     }
   ]
 }
