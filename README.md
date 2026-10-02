@@ -1,49 +1,72 @@
-# AI Engineering Syllabus
+# AI Engineering Learning Platform
 
-This repository contains the **AI Engineering syllabus** and related learning materials for 4Geeks Academy:
+Plataforma personal de aprendizaje construida **íntegramente sobre el contenido del repositorio**:
 
-- **Curriculum content** (milestones, skills, contexts and theory).
-- **Hands-on projects** for each skill and milestone, under `content/projects/`.
-- Supporting files for the platform (`learn.json`, reference solutions, assets, etc.).
+`https://github.com/4GeeksAcademy/ai-engineering-syllabus`
 
----
+## Regla fundamental
 
-## Projects (hands-on practice)
+El repositorio de 4Geeks Academy es la **única fuente de verdad pedagógica**.
 
-You can find the practical projects in [`content/projects`](./content/projects). **Suggested order** (56 projects): web fundamentals and Tailwind first, then OpenClaw setup through memory/onboarding, TypeScript and UML modeling, React/Next.js and company milestones, AI-assisted specs and monorepo work, APIs and auth, incidents and SQL audits, inventory backend/backoffice, Docker, performance, telemetry, data pipelines, background jobs, and message queues.
+La plataforma NO crea:
 
-**Technologies and skills developed in the projects:**
+- módulos nuevos;
+- lecciones nuevas;
+- proyectos nuevos;
+- requisitos nuevos;
+- ejercicios nuevos;
+- evaluaciones nuevas;
+- contextos empresariales nuevos;
+- orden pedagógico alternativo;
+- contenido educativo presentado como parte del curso que no exista en el repositorio.
 
-- **HTML5 & CSS3:** Semantic layout, accessibility, SEO, responsive design.
-- **Tailwind CSS:** Utility-first styling for rapid and responsive UI development.
-- **JavaScript & TypeScript:** Control flow, data structures, validations, error handling.
-- **React & Next.js:** Components, routing, URL filters, state and props management, SSR/SSG.
-- **Collaborative design & version control:** Git, branching, pull requests, best practices for teamwork.
-- **Object modeling & diagrams:** UML, class design, and business model relationships.
-- **Interface prototyping:** UI/UX, creation of admin panels and interactive forms.
-- **APIs & Backend:** FastAPI, TinyDB, Pydantic, SQLModel, Supabase/PostgreSQL, JWT, RESTful endpoints, serialization, and caching.
-- **SQL & data analysis:** Single-table and multi-table queries, data-quality audits, JOINs.
-- **Integration with external tools:** OpenClaw, Telegram, Zapier, Google Drive & Calendar, 4Geeks API.
-- **Agent development and automation:** Skills, memory, onboarding flows, agent loops, artifact and evidence management.
-- **File and data processing:** CSV analysis, Python scripts, Pandas reporting, automated exports and summaries.
-- **Systems architecture:** Proposals, diagrams, documentation, and modular application extension.
-- **Cybersecurity:** Authentication flows, user state management, password resets, unit-tested auth logic.
-- **Docker & containers:** Dockerfiles, Compose, multi-service local orchestration, production-ready environments.
-- **Performance engineering:** Core Web Vitals, Lighthouse audits, payload optimization, frontend and API caching.
-- **Telemetry:** Event design, frontend capture, batch storage, and reporting pipelines.
-- **Data pipelines:** ETL design, Prefect orchestration, idempotency, subflows, and pipeline testing.
-- **Background jobs:** Cron scheduling, distributed locks, job state machines, and independent CLI processes.
-- **Message queues:** Producer/consumer patterns, Redis brokers, Celery workers, retries, DLQ, and Flower observability.
-- **Monorepo development:** Organization and coordination of frontend, backend, and auxiliary services within a single repository.
+La aplicación existe para **convertir el repositorio en una experiencia de aprendizaje cómoda**, no para sustituirlo ni reinterpretarlo libremente.
 
-For more detail on each item, open the project folder and read `README.md` (and `README.es.md` when available). The same ordered list lives in [`content/projects/README.md`](./content/projects/README.md). Company-specific scenario files live under [`content/contexts`](./content/contexts) (see [`content/contexts/README.md`](./content/contexts/README.md)).
+## Qué aporta la plataforma
 
----
+La plataforma puede añadir únicamente funcionalidad de producto:
 
-## Structure of this repository
+- navegación;
+- buscador;
+- progreso personal;
+- notas;
+- marcadores;
+- estado de proyectos;
+- sincronización del repositorio;
+- tutor IA estrictamente fundamentado en el repositorio;
+- vinculación de los repositorios personales donde se resuelvan los proyectos.
 
-- `content/` — Syllabus content (milestones, skills, contexts, and projects).
-  - `content/projects/` — All AI Engineering practice projects.
-- `.learn/` and `learn.json` files — Integration with the 4Geeks platform.
+Estas funciones nunca pueden modificar la fuente pedagógica.
 
-This repository is used as the **single source of truth** for the AI Engineering program materials at 4Geeks Academy.
+## Fuente del contenido
+
+El repositorio contiene actualmente tres grandes áreas bajo `content/`:
+
+- `content/projects/`
+- `content/contexts/`
+- `content/lessons/`
+
+También contiene archivos de soporte como `learn.json`, `.learn/`, assets y soluciones/referencias cuando correspondan.
+
+La plataforma debe conservar siempre la trazabilidad hasta el archivo original.
+
+## Desarrollo por hitos
+
+Consultar:
+
+- `MILESTONES.md`
+- `STATUS.md`
+- `docs/milestones/`
+
+Orca debe trabajar un hito cada vez.
+
+## Documentos esenciales
+
+- `SOURCE_OF_TRUTH.md`
+- `CONTENT_CONTRACT.md`
+- `REPO_MAP.md`
+- `MILESTONES.md`
+- `ORCA.md`
+- `ARCHITECTURE.md`
+- `DATA_MODEL.md`
+- `STATUS.md`
