@@ -18,14 +18,12 @@ Toda nueva función debe respetar `SOURCE_OF_TRUTH.md`.
 
 ## Infraestructura de plataforma (candidatas detectadas en M0)
 
-- CI (GitHub Actions) para lint + typecheck + test + build de `platform/`.
 - `prettier-plugin-tailwindcss` para ordenar las clases de Tailwind de la app.
 - Estrategia fork/upstream: remoto `upstream`, política de merge y registro de
   los archivos raíz divergidos.
 - Migración de `platform/` a workspace (`apps/web` + `packages/*`) si aparece un
   segundo paquete.
 - Nombre definitivo del producto.
-- `.prettierignore` raíz si el gate de formato lo necesita.
 - Generar subtokens por segmento de los slugs del catálogo en el guard AC-0.10
   (evaluar antes los posibles falsos positivos).
 - Sustituir la suite `radix-ui` por primitivos sueltos (`@radix-ui/react-slot`)
@@ -39,3 +37,12 @@ Toda nueva función debe respetar `SOURCE_OF_TRUTH.md`.
   autoexclusión del propio guard.
 - Retirar `"iconLibrary": "lucide"` de `platform/components.json` mientras no se
   usen iconos (o reinstalar `lucide-react` cuando se necesiten).
+- Script de alta de fixtures que copie el archivo del upstream y calcule su
+  `blob_sha`, y contrastar `commit`/`path`/`blob_sha` de cada fixture contra el
+  upstream al darlo de alta (Hito 1).
+- Añadir `prettier` como devDependency de `platform/` con scripts `format` y
+  `format:check`, para no descargarlo ad hoc en CI.
+- Fijar las GitHub Actions por SHA en lugar de por tag mayor (hardening de
+  supply chain; valorar Dependabot).
+- Decidir si el CI debe cubrir el formato de la raíz: hoy hay 235 archivos
+  upstream preexistentes sin formatear que no deben tocarse.

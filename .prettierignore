@@ -1,0 +1,9 @@
+# Build/generated artifacts of the platform app.
+# Prettier 3 only reads the root .prettierignore and root .gitignore, so the
+# app's own platform/.prettierignore does not apply to `prettier --check .`
+# from the repository root.
+platform/.next/
+platform/node_modules/
+platform/coverage/
+platform/next-env.d.ts
+platform/pnpm-lock.yaml

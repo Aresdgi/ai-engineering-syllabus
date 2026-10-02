@@ -116,6 +116,51 @@ forma explícita (fail-closed) en lugar de pasar en vacío. Los nombres del
 syllabus solo pueden llegar a la UI mediante la ingesta (Hito 1), nunca como
 literales en el código.
 
+## Fixtures fuente (a partir del Hito 1)
+
+Los tests que necesiten contenido real del syllabus usan fixtures copiados
+verbatim del repositorio fuente. La copia vive en `fixtures/source/`, ordenada
+por commit y conservando el path original:
+
+```text
+platform/fixtures/source/
+├── manifest.json
+└── <commit_sha>/<path original>
+```
+
+`manifest.json` es obligatorio y declara cada fixture:
+
+```json
+{
+  "repository": "4GeeksAcademy/ai-engineering-syllabus",
+  "fixtures": [
+    {
+      "commit": "<commit_sha>",
+      "path": "<path original>",
+      "blob_sha": "<git blob sha1>"
+    }
+  ]
+}
+```
+
+`blob_sha` es el SHA-1 git del contenido (`sha1("blob <bytes>\0" + contenido)`),
+el mismo que imprime `git hash-object` sobre el archivo original:
+
+```sh
+git hash-object content/<path original>
+```
+
+El guard de AC-0.10 valida este directorio antes de excluir nada del escaneo de
+nombres: un archivo no declarado en el manifiesto, un fixture cuyo blob no
+coincida con `blob_sha` (alterado), una entrada del manifiesto sin archivo o un
+manifiesto con forma inválida (campos obligatorios, duplicados, paths absolutos
+o con `..`) hacen fallar los tests. Solo los fixtures verificados y el propio
+`manifest.json` quedan excluidos; el resto de `platform/` se sigue escaneando
+igual. Si `fixtures/source/` no existe, no hay fixtures que verificar y no se
+excluye nada: el guard escanea `platform/` como siempre. Si el directorio existe
+con archivos pero sin `manifest.json`, cada archivo se considera no declarado y
+los tests fallan (un directorio sin archivos no produce violaciones).
+
 ## Documentación relacionada
 
 - [SOURCE_OF_TRUTH.md](../SOURCE_OF_TRUTH.md) — fuente única del contenido.
