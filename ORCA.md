@@ -38,7 +38,8 @@ Antes de programar:
 
 ## Hito activo
 
-Solo trabajar el indicado en `STATUS.md`.
+Solo trabajar el indicado en `STATUS.md`. En modo nocturno, el primer elemento sin
+marcar de 'Cola nocturna'.
 
 ## Regla de procedencia
 
@@ -93,7 +94,22 @@ Actualizar:
 - checklist del hito
 - `DECISIONS.md` si procede
 
-No iniciar el siguiente hito automáticamente.
+No iniciar el siguiente hito automáticamente, salvo en modo nocturno (ver abajo).
+
+## Modo nocturno
+
+Los elementos de "Cola nocturna" en STATUS.md están autorizados:
+al cerrar uno, pasar al siguiente sin esperar al usuario.
+
+- Decisiones de auditoría: tomar la interpretación más conservadora
+  coherente con SOURCE_OF_TRUTH.md y anotarla en "Decisiones pendientes
+  de validar" del plan de auditoría. Si la decisión inventaría contenido
+  o cambia el alcance, marcar [!] con el motivo y parar.
+- Una rama por elemento, creada desde la del elemento anterior.
+  Nunca merge a main, nunca push.
+- No escribir en la base real de Supabase. Tests con PGlite.
+- Si el elemento no tiene documento en docs/milestones/, crearlo
+  en la auditoría a partir de BACKLOG.md antes de implementar.
 
 ## Backlog
 

@@ -2,12 +2,13 @@
 
 ## Hito activo
 
-Hito 2 — Navegador del syllabus real
+Hito 2.5 — Autonomía de 4Geeks (`docs/milestones/M2B_AUTONOMY.md`, en la rama
+`m2b-autonomy`)
 
 ## Estado
 
-DONE — pendiente de revisión del usuario (rama `m2-syllabus-ui`) antes de mergear a
-`main` y de autorizar el siguiente hito.
+Hito 2 cerrado y mergeado en `main` (`0db4d89`). Hito 2.5 EN CURSO en la rama
+`m2b-autonomy` (sin mergear a `main`): ver el `STATUS.md` de esa rama.
 
 ## Fuente educativa
 
@@ -35,11 +36,15 @@ No utilizar contenido demo inventado. Fixtures solo del repo real (ADR-009).
 
 ## Próxima acción
 
-1. Revisión del usuario de la rama `m2-syllabus-ui` y merge a `main`.
-2. Propuesto: hito "Autonomía de 4Geeks" (archivar lecciones externas de
-   4geeks.com, respaldos Wayback) antes del Hito 3 — ver `BACKLOG.md`.
-3. Propuesto: pasada de alineación con shadcn/ui (skill `shadcn` instalada) como
+1. Cerrar el Hito 2.5 en la rama `m2b-autonomy`; revisión del usuario antes de
+   mergear a `main`.
+2. Propuesto: pasada de alineación con shadcn/ui (skill `shadcn` instalada) como
    refactor sin cambios funcionales — ver `BACKLOG.md`.
+
+## Cola nocturna
+
+Marcas: `[ ]` pendiente · `[x]` cerrado según "Final de hito" de `ORCA.md` ·
+`[!]` necesita una decisión del usuario (motivo en la misma línea).
 
 ## Blockers
 
