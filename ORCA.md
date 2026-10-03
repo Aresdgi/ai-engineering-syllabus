@@ -101,15 +101,66 @@ No iniciar el siguiente hito automáticamente, salvo en modo nocturno (ver abajo
 Los elementos de "Cola nocturna" en STATUS.md están autorizados:
 al cerrar uno, pasar al siguiente sin esperar al usuario.
 
+### Al empezar cada elemento
+
+- Lee el último cierre en docs/cierres/ (STATUS.md indica cuál).
+  Si no hay cierres previos, parte de la rama actual.
+- Verifica antes de construir encima: el commit indicado en el cierre
+  existe y build, typecheck, lint y tests pasan en esa rama. Si no,
+  escribe el motivo en AGENT_FAILED, marca el elemento [!] y para.
+
+### Durante
+
 - Decisiones de auditoría: tomar la interpretación más conservadora
   coherente con SOURCE_OF_TRUTH.md y anotarla en "Decisiones pendientes
   de validar" del plan de auditoría. Si la decisión inventaría contenido
-  o cambia el alcance, marcar [!] con el motivo y parar.
+  o cambia el alcance, escribe la pregunta en AGENT_BLOCKED, marca el
+  elemento [!] y para.
+- Si el elemento no tiene documento en docs/milestones/, crearlo en la
+  auditoría a partir de BACKLOG.md antes de implementar.
+- Límite de reparación: máximo 3 intentos sobre el mismo fallo (mismo
+  test o mismo comando) y 5 rondas de reparación en total por elemento.
+  Al superarlo, escribe el motivo en AGENT_FAILED, marca el elemento [!]
+  y para. Aplica también a los workers.
 - Una rama por elemento, creada desde la del elemento anterior.
   Nunca merge a main, nunca push.
 - No escribir en la base real de Supabase. Tests con PGlite.
-- Si el elemento no tiene documento en docs/milestones/, crearlo
-  en la auditoría a partir de BACKLOG.md antes de implementar.
+- Nunca borres AGENT_STOP, AGENT_BLOCKED ni AGENT_FAILED.
+
+### Cierre obligatorio
+
+Escribe docs/cierres/NN-nombre-corto.md con esta plantilla, todas las
+secciones ("Ninguna" si no aplica):
+
+```markdown
+## Tarea NN: DONE
+
+### Objetivo
+
+### Cambios realizados
+
+### Archivos modificados
+
+### Verificación
+
+- build / typecheck / lint / tests: PASS o FAIL
+- QA técnica / fidelidad / diseño: PASS o FAIL
+
+### Decisiones tomadas
+
+### Deuda / problemas detectados
+
+### Commit
+
+### Notas para el siguiente
+```
+
+- "Verificación" solo con resultados de comandos ejecutados en esta sesión.
+- "Commit" es el hash del commit con los cambios. El cierre y STATUS.md
+  van en un commit posterior.
+- No decidas la siguiente tarea: la decide la cola.
+- En STATUS.md, actualiza solo la referencia al último cierre y, lo
+  último de todo, marca el elemento [x].
 
 ## Backlog
 

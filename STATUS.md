@@ -43,7 +43,9 @@ No utilizar contenido demo inventado. Fixtures solo del repo real (ADR-009).
 
 ## Cola nocturna
 
-Marcas: `[ ]` pendiente · `[x]` cerrado según "Final de hito" de `ORCA.md` ·
+Último cierre: ninguno
+
+Marcas: `[ ]` pendiente · `[x]` cerrado según "Modo nocturno" de `ORCA.md` ·
 `[!]` necesita una decisión del usuario (motivo en la misma línea).
 
 ## Blockers

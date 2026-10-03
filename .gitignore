@@ -23,4 +23,6 @@ coverage/
 
 # Modo nocturno (noche.sh)
 AGENT_STOP
+AGENT_BLOCKED
+AGENT_FAILED
 logs/
