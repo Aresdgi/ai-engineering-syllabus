@@ -6,9 +6,19 @@ Hito 2.5 — Autonomía de 4Geeks (`docs/milestones/M2B_AUTONOMY.md`)
 
 ## Estado
 
-PAUSADO (2026-10-02, a petición del usuario) — Hito 2 cerrado y mergeado en `main`
-(`0db4d89`). Hito 2.5 definido (AC en `docs/milestones/M2B_AUTONOMY.md`); la
-auditoría se interrumpió antes de entregar y debe relanzarse. No iniciar el Hito 3.
+EN CURSO (2026-10-03), rama `m2b-autonomy` (sin commitear). Hito 2 cerrado y
+mergeado en `main` (`0db4d89`).
+
+- Auditoría: `docs/milestones/M2B_AUDIT_PLAN.md` (§8: decisiones del usuario —
+  sin Save Page Now; licencia: copia literal; lecciones retiradas → alias hacia la
+  lección equivalente archivada).
+- Implementación completa (W0 esquema/migración 0002 aplicada, W1 inventario y
+  CLI `archive:external` con captura real, W2 capa `course/`, W3 vista `/archive`
+  y `/archive-assets`, D0 ADR-020 y docs).
+- QA: `M2B_QA_TECHNICAL.md` (10/10 AC PASS) y `M2B_QA_FIDELITY.md`.
+- Correcciones post-QA: FXC (T-03, O-01) hecha; FXA (T-01) y FXB (T-02,
+  D-01..D-04) interrumpidas por un reinicio del equipo con cambios parciales en el
+  árbol: relanzar como reanudación. Después, re-QA y cierre.
 
 ## Fuente educativa
 
@@ -36,9 +46,14 @@ No utilizar contenido demo inventado. Fixtures solo del repo real (ADR-009).
 
 ## Próxima acción
 
-1. Retomar el Hito 2.5 en la rama `m2b-autonomy`: relanzar la auditoría read-only
-   (`docs/milestones/M2B_AUDIT_PLAN.md`) y seguir el flujo habitual.
+1. Reanudar FXA y FXB, re-QA (`M2B-RQA`) y cerrar el Hito 2.5 (commit en
+   `m2b-autonomy`); revisión del usuario antes de mergear a `main`.
 2. Después, pasada de alineación con shadcn/ui (ver `BACKLOG.md`), antes del Hito 3.
+
+## Cola nocturna
+
+Marcas: `[ ]` pendiente · `[x]` cerrado según "Final de hito" de `ORCA.md` ·
+`[!]` necesita una decisión del usuario (motivo en la misma línea).
 
 ## Blockers
 

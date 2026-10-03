@@ -20,3 +20,7 @@ coverage/
 .DS_Store
 .idea/
 .vscode/
+
+# Modo nocturno (noche.sh)
+AGENT_STOP
+logs/
