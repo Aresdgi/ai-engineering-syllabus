@@ -26,3 +26,4 @@ AGENT_STOP
 AGENT_BLOCKED
 AGENT_FAILED
 logs/
+.playwright-mcp/

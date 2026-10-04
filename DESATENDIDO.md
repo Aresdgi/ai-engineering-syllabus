@@ -27,7 +27,10 @@ chocan con el proceso habitual del proyecto, mandan estas.
 - **Prohibido tocar:** escribir en la base real de Supabase (incluidas
   migraciones y CLIs como `ingest` o `archive:external`; los tests solo con
   PGlite); `platform/.env.local` y cualquier secreto; inventar contenido
-  educativo.
+  educativo; cualquier tarea que haga que una página escriba en la base al
+  visitarla (registro de visitas, progreso, cachés en tabla...) requiere que la
+  revise el usuario antes: marca el elemento `[!]` con la pregunta en
+  `AGENT_BLOCKED`.
 - **Proceso habitual del proyecto:** `ORCA.md`.
 - **Documentos de tarea:** `docs/milestones/`. Si el elemento no tiene
   documento, se crea en la auditoría a partir de `BACKLOG.md` antes de
@@ -35,6 +38,15 @@ chocan con el proceso habitual del proyecto, mandan estas.
 - **Reglas propias del proyecto:** las decisiones de auditoría se anotan
   también en "Decisiones pendientes de validar" del plan de auditoría
   (`docs/milestones/M<n>_AUDIT_PLAN.md`), además de en el cierre.
+- **Servidor para las QA de diseño:** antes de las QA de diseño, el orquestador
+  arranca `npx --yes pnpm@12.8.1 --dir platform exec next dev -p 3100` en una
+  terminal de Orca y la cierra al terminar. No hay base local: el servidor lee
+  la base real de Supabase, así que las QA de diseño solo navegan y capturan
+  (MCP de Playwright, guardando las capturas en `.playwright-mcp/`); no envían
+  formularios ni pulsan nada que pueda escribir. Hoy ninguna página ni ruta
+  escribe en la base al visitarla (comprobado el 2026-10-04); si una tarea lo
+  cambiara, esa ruta queda excluida de las QA de diseño hasta que lo revise el
+  usuario.
 
 ## Papel del orquestador
 
