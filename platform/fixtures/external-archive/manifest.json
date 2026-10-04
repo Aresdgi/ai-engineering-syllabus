@@ -1,0 +1,68 @@
+{
+  "description": "Fixtures reales del archivo externo (ADR-009): respuestas literales de la API del registro de BreatheCode, Markdown crudo del repositorio publico breatheco-de/knowledge-base pinneado al commit, e imagenes reales referenciadas por ese Markdown. Ningun archivo se edita a mano.",
+  "repository": {
+    "owner": "breatheco-de",
+    "name": "knowledge-base",
+    "commit": "8f3c556fbe2dd7c3c129b4e000c642ff570a1b7a",
+    "default_branch": "main"
+  },
+  "registry_base_url": "https://breathecode.herokuapp.com/v1/registry/asset/",
+  "files": [
+    {
+      "path": "registry/how-to-start-a-project.json",
+      "url": "https://breathecode.herokuapp.com/v1/registry/asset/how-to-start-a-project",
+      "captured_at": "2026-10-02",
+      "byte_size": 2103,
+      "sha256": "b6f63cd9deb4550364b7f26e033b3a07212d575f41e320d765acd65d0383282e"
+    },
+    {
+      "path": "registry/como-comenzar-un-proyecto-de-codificacion.json",
+      "url": "https://breathecode.herokuapp.com/v1/registry/asset/como-comenzar-un-proyecto-de-codificacion",
+      "captured_at": "2026-10-02",
+      "byte_size": 2259,
+      "sha256": "4ecfaa5709d516d6ca82b102db87266ebb0e5630b7142f65bb78a182947beb4b"
+    },
+    {
+      "path": "registry/what-is-github-codespaces.json",
+      "url": "https://breathecode.herokuapp.com/v1/registry/asset/what-is-github-codespaces",
+      "captured_at": "2026-10-02",
+      "byte_size": 2244,
+      "sha256": "5bc3589250e79eb107e4724c6d021d79b59970f0e1f279bbb8f734b4fa407926"
+    },
+    {
+      "path": "knowledge-base/8f3c556fbe2dd7c3c129b4e000c642ff570a1b7a/content/how-to-start-a-project.md",
+      "url": "https://raw.githubusercontent.com/breatheco-de/knowledge-base/8f3c556fbe2dd7c3c129b4e000c642ff570a1b7a/content/how-to-start-a-project.md",
+      "captured_at": "2026-10-02",
+      "byte_size": 6100,
+      "sha256": "9261997020916708e1a9b7f88417a2a5baaacb49f654eb0e6a92126dde6b1a2e"
+    },
+    {
+      "path": "knowledge-base/8f3c556fbe2dd7c3c129b4e000c642ff570a1b7a/content/how-to-start-a-project.es.md",
+      "url": "https://raw.githubusercontent.com/breatheco-de/knowledge-base/8f3c556fbe2dd7c3c129b4e000c642ff570a1b7a/content/how-to-start-a-project.es.md",
+      "captured_at": "2026-10-02",
+      "byte_size": 6743,
+      "sha256": "5424302d0b6bdbaa54db820f3da959efb0753921cacff7f75a0663a2f8b1030f"
+    },
+    {
+      "path": "knowledge-base/8f3c556fbe2dd7c3c129b4e000c642ff570a1b7a/content/what-is-github-codespaces.md",
+      "url": "https://raw.githubusercontent.com/breatheco-de/knowledge-base/8f3c556fbe2dd7c3c129b4e000c642ff570a1b7a/content/what-is-github-codespaces.md",
+      "captured_at": "2026-10-02",
+      "byte_size": 6429,
+      "sha256": "a14968e4ad5c9991221370e9c9f6ae3c4f114c427b62d59fb5491ed7129734f6"
+    },
+    {
+      "path": "images/github-exaplantion.png",
+      "url": "https://raw.githubusercontent.com/breatheco-de/knowledge-base/8f3c556fbe2dd7c3c129b4e000c642ff570a1b7a/images/github-exaplantion.png",
+      "captured_at": "2026-10-02",
+      "byte_size": 53883,
+      "sha256": "4358d4ec9784989d021913e81faf76db8ac37ce53df56e5ea33fcd464ffacdce"
+    },
+    {
+      "path": "images/github-codespaces-explanation.png",
+      "url": "https://raw.githubusercontent.com/breatheco-de/knowledge-base/8f3c556fbe2dd7c3c129b4e000c642ff570a1b7a/images/github-codespaces-explanation.png",
+      "captured_at": "2026-10-02",
+      "byte_size": 62883,
+      "sha256": "4a02e418dc0853be18e4df60e8d1e89e63aea5e1a715c5e114b9cf84cd8a3bc4"
+    }
+  ]
+}

@@ -577,6 +577,178 @@ describe("SourceMarkdown: prosa y bloques", () => {
   });
 });
 
+describe("SourceMarkdown: material archivado y respaldo Wayback (Hito 2.5)", () => {
+  it("resuelve external-archive como enlace interno con indicador visible", () => {
+    const href = "/archive/example.com/lesson/fixture-lesson";
+    const { container } = render(
+      <SourceMarkdown
+        markdown="[alpha](https://example.com/lesson/fixture-lesson)"
+        resolveUrl={() => ({
+          kind: "external-archive",
+          href,
+          originalHref: "https://example.com/lesson/fixture-lesson",
+          archiveId: "fixture-archive-id",
+        })}
+      />,
+    );
+
+    const link = container.querySelector(`a[href="${href}"]`);
+    expect(link?.textContent).toContain("alpha");
+    expect(link?.textContent).toContain("(copia archivada)");
+    expect(link?.getAttribute("target")).toBeNull();
+  });
+
+  it("traduce el indicador de copia archivada al inglés", () => {
+    const { container } = render(
+      <SourceMarkdown
+        markdown="[alpha](https://example.com/lesson/fixture-lesson)"
+        resolveUrl={() => ({
+          kind: "external-archive",
+          href: "/archive/example.com/lesson/fixture-lesson",
+          originalHref: "https://example.com/lesson/fixture-lesson",
+          archiveId: "fixture-archive-id",
+        })}
+        lang="en"
+      />,
+    );
+
+    expect(container.textContent).toContain("(archived copy)");
+  });
+
+  it("mantiene el original y añade el respaldo Wayback marcado con la fecha", () => {
+    const originalHref = "https://example.com/tool/fixture-tool";
+    const backupHref =
+      "http://web.archive.org/web/20260613092255/https://example.com/tool/fixture-tool";
+    const capturedAt = "2026-06-13T09:22:55.000Z";
+    const expectedDate = new Intl.DateTimeFormat("es-ES", {
+      dateStyle: "medium",
+    }).format(new Date(capturedAt));
+
+    const { container } = render(
+      <SourceMarkdown
+        markdown={`[alpha](${originalHref})`}
+        resolveUrl={() => ({
+          kind: "external",
+          href: originalHref,
+          backup: { href: backupHref, capturedAt },
+        })}
+      />,
+    );
+
+    const links = container.querySelectorAll("a");
+    expect(links).toHaveLength(2);
+    expect(links[0]).toHaveAttribute("href", originalHref);
+    expect(links[0]?.getAttribute("target")).toBe("_blank");
+    expect(links[1]).toHaveAttribute("href", backupHref);
+    expect(links[1]?.getAttribute("target")).toBe("_blank");
+    expect(links[1]?.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(links[1]?.textContent).toContain("Respaldo en Wayback Machine");
+    expect(links[1]?.textContent).toContain(expectedDate);
+  });
+
+  it("renderiza las imágenes archive-asset desde /archive-assets con alt literal", () => {
+    const sha = "a".repeat(64);
+    const { container } = render(
+      <SourceMarkdown
+        markdown="![fixture image](https://example.com/images/fixture-image.png)"
+        resolveUrl={() => ({
+          kind: "archive-asset",
+          href: `/archive-assets/${sha}`,
+          sha256: sha,
+        })}
+      />,
+    );
+
+    const img = container.querySelector("img");
+    expect(img?.getAttribute("src")).toBe(`/archive-assets/${sha}`);
+    expect(img?.getAttribute("alt")).toBe("fixture image");
+  });
+});
+
+describe("SourceMarkdown: accesibilidad de prosa y bloques (ronda post-QA M2B)", () => {
+  it("D-01: el `code` dentro de `blockquote` pasa a primer plano (AA en claro)", () => {
+    const { container } = renderMarkdown("> Texto con `alpha`.\n");
+
+    const blockquote = container.querySelector("blockquote");
+    expect(blockquote?.className).toContain("text-muted-foreground");
+    expect(blockquote?.className).toContain("[&_code]:text-foreground");
+    expect(blockquote?.querySelector("code")?.textContent).toBe("alpha");
+  });
+
+  it("D-02: el bloque `pre` desplazable es enfocable y tiene nombre accesible neutro", () => {
+    const { container } = renderMarkdown("```\nconst alpha = 1;\n```\n");
+
+    const pre = container.querySelector("pre");
+    expect(pre).toHaveAttribute("tabindex", "0");
+    expect(pre).toHaveAttribute("aria-label", "Bloque de código");
+  });
+
+  it("D-02: traduce el nombre accesible del bloque de código al inglés", () => {
+    const { container } = render(
+      <SourceMarkdown
+        markdown={"```\nconst alpha = 1;\n```\n"}
+        resolveUrl={passthroughResolver}
+        lang="en"
+      />,
+    );
+
+    expect(container.querySelector("pre")).toHaveAttribute(
+      "aria-label",
+      "Code block",
+    );
+  });
+
+  it("D-03: los checkboxes de listas de tareas tienen nombre accesible neutro", () => {
+    const { container } = renderMarkdown(
+      ["- [x] alpha", "- [ ] beta"].join("\n"),
+    );
+
+    const checkboxes = container.querySelectorAll<HTMLInputElement>(
+      'input[type="checkbox"]',
+    );
+    expect(checkboxes).toHaveLength(2);
+    checkboxes.forEach((checkbox) => {
+      expect(checkbox).toHaveAccessibleName("Elemento de tarea");
+    });
+  });
+
+  it("D-03: traduce el nombre accesible de los checkboxes al inglés", () => {
+    const { container } = render(
+      <SourceMarkdown
+        markdown={"- [x] alpha\n"}
+        resolveUrl={passthroughResolver}
+        lang="en"
+      />,
+    );
+
+    expect(
+      container.querySelector<HTMLInputElement>('input[type="checkbox"]'),
+    ).toHaveAccessibleName("Task item");
+  });
+
+  it("D-04: el respaldo Wayback queda atenuado en reposo y solo cambia con hover fino", () => {
+    const backupHref =
+      "http://web.archive.org/web/20260613092255/https://example.com/tool/fixture-tool";
+    const { container } = render(
+      <SourceMarkdown
+        markdown="[alpha](https://example.com/tool/fixture-tool)"
+        resolveUrl={() => ({
+          kind: "external",
+          href: "https://example.com/tool/fixture-tool",
+          backup: {
+            href: backupHref,
+            capturedAt: "2026-06-13T09:22:55.000Z",
+          },
+        })}
+      />,
+    );
+
+    const backup = container.querySelector(`a[href="${backupHref}"]`);
+    expect(backup?.className).toContain("text-muted-foreground");
+    expect(backup?.className).toContain("hover-fine:text-foreground");
+  });
+});
+
 describe("SourceMarkdown: variante compact (contrato M2-FX2)", () => {
   it("usa tamaño ≤ título de fila, color muted y sin márgenes de bloque", () => {
     const { container } = render(

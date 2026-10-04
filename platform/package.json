@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "ingest": "tsx --env-file-if-exists=.env.local src/source/cli.ts",
+    "archive:external": "tsx --env-file-if-exists=.env.local src/external-archive/cli.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=.env.local src/source/store/migrate.ts",
     "blobs:backfill": "tsx --env-file-if-exists=.env.local src/source/blobs-backfill.ts"

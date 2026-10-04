@@ -47,6 +47,7 @@ export { extractDocumentTitle, markdownInlineToText } from "./title";
 export { languagePathCandidates } from "./language";
 export {
   createMarkdownResolver,
+  externalArchiveMarkdownUrl,
   githubBlobUrl,
   githubTreeUrl,
   mirrorRepositoryUrl,
@@ -56,6 +57,20 @@ export {
   type MarkdownResolutionContext,
   type ResolverFile,
 } from "./links";
+export {
+  createExternalArchiveIndex,
+  createExternalArchiveReader,
+  createExternalArchiveResolver,
+  getArchivedAsset,
+  getArchivedItemByCanonicalUrl,
+  getArchivedItemByHref,
+  listArchivedItems,
+  resolveArchivedAlias,
+  resolveArchivedVariant,
+  type ArchivedAssetBytes,
+  type ExternalArchiveReader,
+  type ResolvedArchiveVariant,
+} from "./external-archive";
 
 type ProductionReader = CourseReader<
   NodePgQueryResultHKT,

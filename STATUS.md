@@ -2,23 +2,12 @@
 
 ## Hito activo
 
-Hito 2.5 — Autonomía de 4Geeks (`docs/milestones/M2B_AUTONOMY.md`)
+Hito 2.5 — Autonomía de 4Geeks (`docs/milestones/M2B_AUTONOMY.md`) — cerrado
 
 ## Estado
 
-EN CURSO, rama `m2b-autonomy` (trabajo sin commitear). Hito 2 cerrado y mergeado
-en `main` (`0db4d89`).
-
-- Auditoría: `docs/milestones/M2B_AUDIT_PLAN.md` (§8: decisiones del usuario —
-  sin Save Page Now; licencia: copia literal; lecciones retiradas → alias hacia la
-  lección equivalente archivada).
-- Implementación completa (W0 esquema/migración 0002 aplicada, W1 inventario y
-  CLI `archive:external` con captura real, W2 capa `course/`, W3 vista `/archive`
-  y `/archive-assets`, D0 ADR-020 y docs).
-- QA: `M2B_QA_TECHNICAL.md` (10/10 AC PASS) y `M2B_QA_FIDELITY.md`.
-- Correcciones post-QA: FXC (T-03, O-01) hecha; FXA (T-01) y FXB (T-02,
-  D-01..D-04) interrumpidas con cambios parciales en el árbol: relanzar como
-  reanudación. Después, re-QA y cierre.
+DONE — pendiente de revisión del usuario (rama `m2b-autonomy`) antes de mergear a
+`main`. Hito 2 en `main` (`0db4d89`).
 
 ## Fuente educativa
 
@@ -28,6 +17,20 @@ propio `Aresdgi/ai-engineering-syllabus` para enlaces (ADR-018).
 ## Regla activa
 
 No utilizar contenido demo inventado. Fixtures solo del repo real (ADR-009).
+
+## Resultado del Hito 2.5
+
+- Lecciones de 4Geeks enlazadas desde el corpus archivadas literalmente en la base
+  propia (`external_archive_*`, ADR-020) con sus imágenes, vista `/archive/…` con
+  aviso de material externo, URL original, fecha, método y hash; servidas sin
+  ningún host de 4Geeks (`/archive-assets/<sha256>`).
+- Lecciones retiradas: alias decididos por el usuario hacia la lección equivalente,
+  con aviso de sustitución. Herramientas: original + respaldo Wayback si existe.
+  Marketing intacto.
+- CLI idempotente `archive:external` (`--dry-run`), inventario reproducible en
+  `docs/milestones/M2B_LINK_INVENTORY.md`.
+- QA: `M2B_QA_TECHNICAL.md` (10/10 AC PASS) y `M2B_QA_FIDELITY.md`; correcciones y
+  re-QA (Claude Sonnet, capturas reales) 9/9 cerrados.
 
 ## Resultado del Hito 2
 
@@ -46,8 +49,7 @@ No utilizar contenido demo inventado. Fixtures solo del repo real (ADR-009).
 
 ## Próxima acción
 
-1. Reanudar FXA y FXB, re-QA y cerrar el Hito 2.5 (commit en `m2b-autonomy`);
-   revisión del usuario antes de mergear a `main`.
+1. Revisión del usuario de la rama `m2b-autonomy` y merge a `main`.
 2. Propuesto: pasada de alineación con shadcn/ui (skill `shadcn` instalada) como
    refactor sin cambios funcionales — ver `BACKLOG.md`.
 

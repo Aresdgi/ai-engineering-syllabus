@@ -1,0 +1,19 @@
+{
+  "decidedBy": "user",
+  "decidedAt": "2026-10-02",
+  "reason": "Decisión literal del usuario (docs/milestones/M2B_AUDIT_PLAN.md §8.3): «una página dedicada con cómo levantar el proyecto con datos de cómo levantar el proyecto». Las URL de lección retiradas no quedan `unavailable`: se registran como alias decidido por el usuario hacia la lección equivalente archivada; el contenido mostrado es el Markdown literal de la lección destino, sin copiar bytes ni traducir nada.",
+  "aliases": [
+    {
+      "from": "https://4geeks.com/es/lesson/como-iniciar-un-proyecto-de-programacion",
+      "to": "https://4geeks.com/es/lesson/como-comenzar-un-proyecto-de-codificacion"
+    },
+    {
+      "from": "https://4geeks.com/es/lesson/how-to-start-a-coding-project",
+      "to": "https://4geeks.com/es/lesson/como-comenzar-un-proyecto-de-codificacion"
+    },
+    {
+      "from": "https://4geeks.com/lesson/how-to-start-a-coding-project",
+      "to": "https://4geeks.com/lesson/how-to-start-a-project"
+    }
+  ]
+}

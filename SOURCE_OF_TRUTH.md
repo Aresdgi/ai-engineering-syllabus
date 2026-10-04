@@ -89,3 +89,11 @@ Cada importación debe registrar:
 - blob SHA o hash local.
 
 La plataforma debe poder indicar qué versión del syllabus está mostrando.
+
+## Material externo archivado
+
+Las copias literales de material externo enlazado por el corpus (clase
+`EXTERNAL_ARCHIVE`, ADR-020 en `DECISIONS.md`) no son una segunda fuente de
+contenido educativo: son citas literales, marcadas y separadas de SOURCE, que
+no sustituyen, resumen ni amplían el syllabus. La regla de "fuente única" de
+esta página no cambia.

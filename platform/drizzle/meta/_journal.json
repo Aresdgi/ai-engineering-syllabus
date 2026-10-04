@@ -15,6 +15,13 @@
       "when": 1790953419350,
       "tag": "0001_silly_the_fury",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790965139009,
+      "tag": "0002_chunky_hairball",
+      "breakpoints": true
     }
   ]
 }

@@ -338,3 +338,75 @@ con una nota de interfaz pequeña y neutra ("Solo disponible en inglés" / "Only
 available in Spanish"); los archivos sin idioma (`null`) se muestran tal cual.
 Nada se traduce ni se inventa: el contenido educativo sigue saliendo literal del
 snapshot y las variantes son las de ADR-012.
+
+## ADR-020 — Clase EXTERNAL_ARCHIVE: material externo enlazado, archivado literal y separado de SOURCE
+
+Status: Accepted (2026-10-02)
+
+`CONTENT_CONTRACT.md` define SOURCE (importado del repo), USER y AI_RESPONSE. El
+Hito 2.5 añade una cuarta clase: `EXTERNAL_ARCHIVE`.
+
+- **Qué es**: copias literales de material externo (lecciones de `4geeks.com` y
+  metadatos de respaldo Wayback de herramientas) **enlazado por documentos del
+  corpus**, conservadas para que el curso siga consultable si desaparece el
+  acceso a 4Geeks. La auditoría del 2026-10-02 midió 1463 ocurrencias y 49 URL
+  canónicas: 8 URL de lección (5 con fuente archivada → 3 ficheros Markdown; el
+  resto se sustituye por alias, ver abajo), 4 URL de herramienta y 37 URL de
+  marketing que no se archivan (AC-2.5.6).
+- **Qué no es**: no es contenido oficial del curso, no es SOURCE y no se mezcla
+  con el catálogo. Vive en tablas propias (`external_archive_items`,
+  `external_archive_assets`, `external_archive_item_assets`) y se muestra en una
+  ruta propia marcada (`/archive/…`), con su URL original, fecha de captura,
+  método y hash.
+- **Fidelidad**: se guarda tal cual (Markdown literal, `sha256` verificable);
+  sin resúmenes, traducciones, títulos ni descripciones generadas. El `title`
+  del item solo se guarda si es literal (frontmatter/H1/API). Las únicas
+  transformaciones son de render (URLs de imagen a `/archive-assets/…` y
+  reescritura de enlaces, ADR-014/ADR-015), permitidas por el contrato de
+  fidelidad.
+- **No contradice `SOURCE_OF_TRUTH.md`**: la única fuente de contenido
+  educativo oficial sigue siendo `4GeeksAcademy/ai-engineering-syllabus`. El
+  archivo es material enlazado desde el propio repo, conservado como cita
+  literal y marcado; no sustituye, resume, traduce ni reordena el syllabus, y
+  nunca se presenta como contenido oficial.
+- **Captura**: CLI propio idempotente (`pnpm archive:external`, `--dry-run`),
+  sin escrituras en el snapshot SOURCE ni en sus tablas. Se captura la lección
+  vía API pública del registro BreatheCode (`/v1/registry/asset/<slug>`) y raw
+  de GitHub con commit pinneado (`breatheco-de/knowledge-base`); el hash y la
+  procedencia (`source_repository`, `source_commit`, `source_path`) quedan
+  registrados. Nunca se pide `learn.4geeks.com` (robots `Disallow: /`) ni
+  `4geeks.com/api/*`; la API solo se usa en captura, jamás en runtime.
+- **Sin Save Page Now**: no se envía nada a archive.org. Las herramientas
+  conservan el enlace original y, solo si ya existe captura, muestran el
+  respaldo Wayback claramente etiquetado (en la auditoría del 2026-10-02 solo
+  `playground.4geeks.com/tracker/api/v1/docs`); no existe el modo
+  `--request-wayback`.
+- **Licencia**: `breatheco-de/knowledge-base` es público pero no declara
+  licencia (`license: null`). El usuario confirmó (2026-10-02) la copia literal
+  para consulta personal offline, marcada como material externo y sin
+  redistribución.
+- **Lecciones retiradas = alias decididos por el usuario**: las URL de lección
+  sin fuente pública ni captura Wayback (3 canónicas y 15 ocurrencias en la
+  auditoría del 2026-10-02) no quedan sin página: se registran como
+  `status = 'alias'`, `method = 'user-alias'` y `alias_of_canonical_url` hacia
+  la lección equivalente archivada (variante `/es/` → destino ES; resto →
+  destino EN; la misma regla cubre cualquier variante adicional del inventario
+  real). El mapa vive como dato versionado
+  (`platform/src/external-archive/aliases.json`, con `decidedBy: "user"`,
+  `decidedAt: "2026-10-02"` y motivo), no en código; el contenido mostrado es
+  el Markdown literal del destino (la fila alias no copia bytes) y la página
+  añade un aviso visible y persistente de sustitución, con enlace al original
+  retirado y a la copia del destino. No es invención: no se genera texto
+  educativo, es una sustitución explícita, marcada y reversible (editar el dato
+  versionado revierte la decisión). Un enlace del corpus hacia una URL retirada
+  abre esa página y el idioma global (ADR-019) elige la variante del destino.
+- **Runtime**: leer `/archive/…` no requiere ningún host externo; los enlaces al
+  original y a Wayback son acciones del usuario. Sin peticiones salientes en el
+  render.
+
+Consecuencias: las tablas `external_archive_*` son globales (direccionadas por
+URL canónica y `sha256`, no por snapshot), con RLS sin políticas como el store
+SOURCE (ADR-010); el contenido enlazado desde una lección archivada que no esté
+en el índice del corpus sigue siendo un enlace externo (no hay archivado
+recursivo); el guard de ADR-008 sigue aplicando (el inventario y el contenido
+salen de la base, nunca hardcodeados).

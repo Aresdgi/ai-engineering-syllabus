@@ -10,7 +10,12 @@
  *    política que un enlace relativo (paso 5); si el path no existe, se deja
  *    intacta como externa (apunta a otra ref, no es un enlace roto). La ref
  *    puede ser de un segmento (`main`) o `refs/heads/<rama>`/`refs/tags/<tag>`.
- * 3. `http(s)://` / `mailto:` → externo intacto.
+ * 3. `http(s)://` / `mailto:` → externo. Antes de devolver `external`, una URL
+ *    `http(s)` se canonicaliza (`canonicalizeUrl`, contrato W1) y se consulta el
+ *    índice opcional `context.externalArchive` (Hito 2.5, AC-2.5.4/5/6):
+ *    lección `captured`/`alias` → `external-archive` (copia propia); herramienta
+ *    con respaldo Wayback → `external` + `backup`; marketing o URL sin archivo
+ *    → `external` intacto.
  * 4. Cualquier otro esquema (`javascript:`, `data:`, …) → roto.
  * 5. Path relativo (o `/ruta` tratado como path del repo) que existe y tiene
  *    vista interna → ruta interna (con cambio de idioma global si el destino
@@ -25,6 +30,7 @@
 
 import { languagePreferenceHref } from "@/lib/i18n";
 
+import { canonicalizeUrl } from "../external-archive/urls";
 import type { MarkdownUrl, MarkdownUrlResolver } from "../lib/markdown/types";
 import {
   decodeHrefPath,
@@ -32,7 +38,11 @@ import {
   splitQueryAndHash,
 } from "./path-utils";
 import { sourceFileHref } from "./routes";
-import type { CourseLanguage, CourseSnapshot } from "./types";
+import type {
+  CourseLanguage,
+  CourseSnapshot,
+  ExternalArchiveLink,
+} from "./types";
 
 const EXTERNAL_SCHEME_PATTERN = /^(https?:|mailto:)/i;
 
@@ -73,6 +83,11 @@ export type MarkdownResolutionContext = {
    * snapshot (útil en tests).
    */
   repositoryUrl?: string | null;
+  /**
+   * Índice opcional de material archivado por URL canónica (Hito 2.5). Sin él,
+   * el comportamiento de los enlaces externos es el del Hito 2 (intacto).
+   */
+  externalArchive?: ReadonlyMap<string, ExternalArchiveLink>;
 };
 
 function encodePathSegments(path: string): string {
@@ -150,6 +165,64 @@ export function shortSha(sha: string): string {
 
 function broken(rawHref: string): MarkdownUrl {
   return { kind: "broken", href: null, rawHref };
+}
+
+/**
+ * Traduce un item del índice de archivo a la resolución de enlace congelada
+ * (Hito 2.5, §6.3 + §8):
+ * - lección `captured` o alias → `external-archive` (abre `/archive/…`);
+ * - herramienta con respaldo Wayback completo → `external` + `backup`;
+ * - cualquier otro caso → `external` intacto (marketing incluido).
+ */
+export function externalArchiveMarkdownUrl(
+  rawHref: string,
+  link: ExternalArchiveLink,
+): MarkdownUrl {
+  if (
+    link.kind === "lesson" &&
+    (link.status === "captured" || link.status === "alias") &&
+    link.href !== null
+  ) {
+    return {
+      kind: "external-archive",
+      href: link.href,
+      originalHref: rawHref,
+      archiveId: link.id,
+    };
+  }
+  if (
+    link.kind === "tool" &&
+    link.waybackUrl !== null &&
+    link.waybackCapturedAt !== null
+  ) {
+    return {
+      kind: "external",
+      href: rawHref,
+      backup: { href: link.waybackUrl, capturedAt: link.waybackCapturedAt },
+    };
+  }
+  return { kind: "external", href: rawHref };
+}
+
+/**
+ * Resolución de un enlace con esquema externo (`http(s)://`/`mailto:`):
+ * consulta el índice de archivo solo para `http(s)` con índice presente y,
+ * si no hay item, devuelve el enlace intacto.
+ */
+function resolveExternalHref(
+  rawHref: string,
+  context: MarkdownResolutionContext,
+): MarkdownUrl {
+  if (context.externalArchive !== undefined && /^https?:/i.test(rawHref)) {
+    const canonical = canonicalizeUrl(rawHref);
+    if (canonical !== null) {
+      const link = context.externalArchive.get(canonical);
+      if (link !== undefined) {
+        return externalArchiveMarkdownUrl(rawHref, link);
+      }
+    }
+  }
+  return { kind: "external", href: rawHref };
 }
 
 type SameRepoLocation = {
@@ -301,7 +374,7 @@ export function resolveMarkdownHref(
       }
     }
     if (EXTERNAL_SCHEME_PATTERN.test(rawHref)) {
-      return { kind: "external", href: rawHref };
+      return resolveExternalHref(rawHref, context);
     }
     return broken(rawHref);
   }

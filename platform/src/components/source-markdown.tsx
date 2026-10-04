@@ -23,6 +23,14 @@ type SourceMarkdownCopy = {
   newTabHint: string;
   brokenPrefix: string;
   brokenHint: string;
+  /** Sufijo visible del enlace interno a una copia archivada (AC-2.5.4). */
+  archiveSuffix: string;
+  /** Etiqueta del respaldo Wayback de una herramienta (AC-2.5.5). */
+  wayback: string;
+  /** Nombre accesible neutro de un bloque de código desplazable (D-02). */
+  codeBlock: string;
+  /** Nombre accesible neutro de un ítem de lista de tareas (D-03). */
+  taskItem: string;
 };
 
 const COPY: Record<UiLanguage, SourceMarkdownCopy> = {
@@ -30,15 +38,46 @@ const COPY: Record<UiLanguage, SourceMarkdownCopy> = {
     newTabHint: " (se abre en una pestaña nueva)",
     brokenPrefix: "Enlace roto en el origen",
     brokenHint: " (enlace roto)",
+    archiveSuffix: "(copia archivada)",
+    wayback: "Respaldo en Wayback Machine",
+    codeBlock: "Bloque de código",
+    taskItem: "Elemento de tarea",
   },
   en: {
     newTabHint: " (opens in a new tab)",
     brokenPrefix: "Broken link in the source",
     brokenHint: " (broken link)",
+    archiveSuffix: "(archived copy)",
+    wayback: "Wayback Machine backup",
+    codeBlock: "Code block",
+    taskItem: "Task item",
   },
 };
 
 const INTERNAL_SOURCE_PREFIX = "/source-files/";
+
+const DATE_LOCALES: Record<UiLanguage, string> = {
+  es: "es-ES",
+  en: "en-US",
+};
+
+const backupDateFormatters: Record<UiLanguage, Intl.DateTimeFormat> = {
+  es: new Intl.DateTimeFormat(DATE_LOCALES.es, { dateStyle: "medium" }),
+  en: new Intl.DateTimeFormat(DATE_LOCALES.en, { dateStyle: "medium" }),
+};
+
+function formatBackupDate(value: string, lang: UiLanguage): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : backupDateFormatters[lang].format(date);
+}
+
+const archiveSuffixClass =
+  "ml-1 text-[0.7em] font-normal whitespace-nowrap text-muted-foreground";
+
+const backupLinkClass =
+  "ml-1 rounded-sm text-xs font-normal text-muted-foreground underline decoration-dotted underline-offset-4 transition-colors duration-150 ease-out hover-fine:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 const linkClass =
   "font-medium underline decoration-muted-foreground underline-offset-4 transition-colors duration-150 ease-out hover-fine:decoration-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
@@ -93,8 +132,17 @@ function renderLink(
     );
   }
 
-  if (resolved.kind === "external") {
+  if (resolved.kind === "external-archive") {
     return (
+      <Link href={resolved.href} title={title} className={linkClass}>
+        {children}
+        <span className={archiveSuffixClass}>{COPY[lang].archiveSuffix}</span>
+      </Link>
+    );
+  }
+
+  if (resolved.kind === "external") {
+    const original = (
       <a
         href={resolved.href}
         title={title}
@@ -105,6 +153,26 @@ function renderLink(
         {children}
         {externalHint(lang)}
       </a>
+    );
+    if (resolved.backup === undefined) {
+      return original;
+    }
+    return (
+      <>
+        {original}{" "}
+        <a
+          href={resolved.backup.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={backupLinkClass}
+        >
+          {`${COPY[lang].wayback} (${formatBackupDate(
+            resolved.backup.capturedAt,
+            lang,
+          )})`}
+          {externalHint(lang)}
+        </a>
+      </>
     );
   }
 
@@ -120,6 +188,14 @@ function renderLink(
       >
         {children}
         {internal ? null : externalHint(lang)}
+      </a>
+    );
+  }
+
+  if (resolved.kind === "archive-asset") {
+    return (
+      <a href={resolved.href} title={title} className={linkClass}>
+        {children}
       </a>
     );
   }
@@ -254,13 +330,15 @@ function createComponents(
     li: ({ children }) => <li className="pl-1">{children}</li>,
     blockquote: ({ children }) => (
       <blockquote
-        className={`${compact ? "my-0" : "my-5"} border-l-2 border-border pl-4 text-muted-foreground`}
+        className={`${compact ? "my-0" : "my-5"} border-l-2 border-border pl-4 text-muted-foreground [&_code]:text-foreground`}
       >
         {children}
       </blockquote>
     ),
     pre: ({ children }) => (
       <pre
+        tabIndex={0}
+        aria-label={COPY[lang].codeBlock}
         className={`${compact ? "my-0" : "my-5"} overflow-x-auto rounded-lg border border-border bg-muted/50 p-4 text-sm leading-relaxed [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-inherit`}
       >
         {children}
@@ -357,6 +435,7 @@ function createComponents(
     input: ({ checked, disabled }) => (
       <input
         type="checkbox"
+        aria-label={COPY[lang].taskItem}
         className="mr-2 size-4 translate-y-[0.5px] accent-foreground"
         defaultChecked={Boolean(checked)}
         disabled={Boolean(disabled)}

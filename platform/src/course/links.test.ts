@@ -12,6 +12,8 @@ import {
   SOURCE_REPOSITORY_NAME,
   SOURCE_REPOSITORY_OWNER,
 } from "../source/types";
+import { PostgresExternalArchiveStore } from "../external-archive/store";
+import type { NewExternalArchiveItem } from "../external-archive/types";
 import {
   fixturesMatching,
   readFixtureEntry,
@@ -33,6 +35,7 @@ import {
   sourceFileHref,
   subprojectHref,
 } from "./routes";
+import type { ExternalArchiveLink } from "./types";
 import { CourseReader } from "./reader";
 import {
   createCourseTestDatabase,
@@ -607,6 +610,232 @@ describe("resolvedor con URLs absolutas del propio repo (F-01, PGlite)", () => {
 
       const missing = `${base}/tree/main/content/projects/missing-unit`;
       expect(resolver(missing)).toEqual({ kind: "external", href: missing });
+    } finally {
+      await client.close();
+    }
+  });
+});
+
+describe("índice de material externo archivado en el resolvedor (Hito 2.5)", () => {
+  const CAPTURED_LESSON_URL =
+    "https://4geeks.com/lesson/how-to-start-a-project";
+  const CAPTURED_LESSON_HREF =
+    "/archive/4geeks.com/lesson/how-to-start-a-project";
+  const RETIRED_LESSON_URL =
+    "https://4geeks.com/es/lesson/como-iniciar-un-proyecto-de-programacion";
+  const RETIRED_LESSON_HREF =
+    "/archive/4geeks.com/es/lesson/como-iniciar-un-proyecto-de-programacion";
+  const TOOL_WITH_BACKUP_URL =
+    "https://playground.4geeks.com/tracker/api/v1/docs";
+  const TOOL_WITH_BACKUP_WAYBACK_URL =
+    "http://web.archive.org/web/20260613092255/https://playground.4geeks.com/tracker/api/v1/docs";
+  const TOOL_WITH_BACKUP_CAPTURED_AT = "2026-06-13T09:22:55.000Z";
+  const TOOL_WITHOUT_BACKUP_URL = "https://diagram.4geeks.com";
+  const MARKETING_COMPARE_URL =
+    "https://4geeksacademy.com/es/comparar-programas";
+  const MARKETING_HOME_URL = "https://4geeks.com";
+
+  function archiveLink(
+    overrides: Partial<ExternalArchiveLink> &
+      Pick<ExternalArchiveLink, "id" | "canonicalUrl" | "kind">,
+  ): ExternalArchiveLink {
+    return {
+      language: null,
+      status: "captured",
+      href: null,
+      waybackUrl: null,
+      waybackCapturedAt: null,
+      aliasOfCanonicalUrl: null,
+      ...overrides,
+    };
+  }
+
+  function archiveContext(
+    links: readonly ExternalArchiveLink[],
+  ): MarkdownResolutionContext {
+    return testContext({
+      externalArchive: new Map(links.map((link) => [link.canonicalUrl, link])),
+    });
+  }
+
+  it("AC-2.5.4: una lección capturada abre la copia archivada con su URL original", () => {
+    const context = archiveContext([
+      archiveLink({
+        id: "archive-lesson-en",
+        canonicalUrl: CAPTURED_LESSON_URL,
+        kind: "lesson",
+        language: "en",
+        href: CAPTURED_LESSON_HREF,
+      }),
+    ]);
+
+    expect(resolveMarkdownHref(CAPTURED_LESSON_URL, context)).toEqual({
+      kind: "external-archive",
+      href: CAPTURED_LESSON_HREF,
+      originalHref: CAPTURED_LESSON_URL,
+      archiveId: "archive-lesson-en",
+    });
+  });
+
+  it("AC-2.5.4: canonicaliza la barra final y conserva la URL original del enlace", () => {
+    const context = archiveContext([
+      archiveLink({
+        id: "archive-lesson-en",
+        canonicalUrl: CAPTURED_LESSON_URL,
+        kind: "lesson",
+        language: "en",
+        href: CAPTURED_LESSON_HREF,
+      }),
+    ]);
+
+    const withSlash = `${CAPTURED_LESSON_URL}/`;
+    expect(resolveMarkdownHref(withSlash, context)).toEqual({
+      kind: "external-archive",
+      href: CAPTURED_LESSON_HREF,
+      originalHref: withSlash,
+      archiveId: "archive-lesson-en",
+    });
+  });
+
+  it("§8: una URL retirada (alias) abre su página /archive/…", () => {
+    const context = archiveContext([
+      archiveLink({
+        id: "archive-lesson-retired",
+        canonicalUrl: RETIRED_LESSON_URL,
+        kind: "lesson",
+        language: "es",
+        status: "alias",
+        href: RETIRED_LESSON_HREF,
+        aliasOfCanonicalUrl:
+          "https://4geeks.com/es/lesson/como-comenzar-un-proyecto-de-codificacion",
+      }),
+    ]);
+
+    expect(resolveMarkdownHref(RETIRED_LESSON_URL, context)).toEqual({
+      kind: "external-archive",
+      href: RETIRED_LESSON_HREF,
+      originalHref: RETIRED_LESSON_URL,
+      archiveId: "archive-lesson-retired",
+    });
+  });
+
+  it("AC-2.5.5: una herramienta con respaldo Wayback conserva el original y añade backup", () => {
+    const context = archiveContext([
+      archiveLink({
+        id: "archive-tool-docs",
+        canonicalUrl: TOOL_WITH_BACKUP_URL,
+        kind: "tool",
+        waybackUrl: TOOL_WITH_BACKUP_WAYBACK_URL,
+        waybackCapturedAt: TOOL_WITH_BACKUP_CAPTURED_AT,
+      }),
+    ]);
+
+    expect(resolveMarkdownHref(TOOL_WITH_BACKUP_URL, context)).toEqual({
+      kind: "external",
+      href: TOOL_WITH_BACKUP_URL,
+      backup: {
+        href: TOOL_WITH_BACKUP_WAYBACK_URL,
+        capturedAt: TOOL_WITH_BACKUP_CAPTURED_AT,
+      },
+    });
+  });
+
+  it("AC-2.5.5: una herramienta sin respaldo queda como externa intacta", () => {
+    const context = archiveContext([
+      archiveLink({
+        id: "archive-tool-diagram",
+        canonicalUrl: TOOL_WITHOUT_BACKUP_URL,
+        kind: "tool",
+      }),
+    ]);
+
+    expect(resolveMarkdownHref(TOOL_WITHOUT_BACKUP_URL, context)).toEqual({
+      kind: "external",
+      href: TOOL_WITHOUT_BACKUP_URL,
+    });
+  });
+
+  it("AC-2.5.6: el marketing real queda idéntico aunque haya índice", () => {
+    const context = archiveContext([
+      archiveLink({
+        id: "archive-lesson-en",
+        canonicalUrl: CAPTURED_LESSON_URL,
+        kind: "lesson",
+        language: "en",
+        href: CAPTURED_LESSON_HREF,
+      }),
+    ]);
+
+    for (const url of [MARKETING_COMPARE_URL, MARKETING_HOME_URL]) {
+      expect(resolveMarkdownHref(url, context)).toEqual({
+        kind: "external",
+        href: url,
+      });
+    }
+  });
+
+  it("sin índice, los enlaces externos mantienen el comportamiento del Hito 2", () => {
+    const context = testContext();
+    expect(context.externalArchive).toBeUndefined();
+    expect(resolveMarkdownHref(CAPTURED_LESSON_URL, context)).toEqual({
+      kind: "external",
+      href: CAPTURED_LESSON_URL,
+    });
+    expect(
+      resolveMarkdownHref("mailto:alguien@example.com", archiveContext([])),
+    ).toEqual({ kind: "external", href: "mailto:alguien@example.com" });
+  });
+
+  it("AC-2.5.4 (PGlite): el CourseReader construye el índice y abre la copia archivada", async () => {
+    const { client, db } = await createCourseTestDatabase();
+    try {
+      const repositoryId = await seedRepository(db);
+      const snapshotId = await seedSnapshot(db, repositoryId, {
+        status: "complete",
+        importedAt: new Date("2026-10-02T10:00:00.000Z"),
+      });
+      await db.insert(sourceFiles).values([
+        textFile(snapshotId, "content/projects/alpha-unit/README.md", {
+          rawContent: "# Alpha\n",
+          language: "en",
+          languageEvidence: "suffix",
+        }),
+      ]);
+      const archiveItem: NewExternalArchiveItem = {
+        originalUrl: CAPTURED_LESSON_URL,
+        canonicalUrl: CAPTURED_LESSON_URL,
+        kind: "lesson",
+        host: "4geeks.com",
+        language: "en",
+        title: "How to start coding a project",
+        content: "# Literal archived body\n",
+        contentSha256: "9".repeat(64),
+        contentFormat: "markdown",
+        sourceRepository: "example-org/example-content",
+        sourceCommit: "c".repeat(40),
+        sourcePath: "content/how-to-start-a-project.md",
+        capturedAt: "2026-10-02T10:00:00.000Z",
+        method: "registry-api+github-raw",
+        httpStatus: 200,
+        status: "captured",
+      };
+      await new PostgresExternalArchiveStore(db).upsertItem(archiveItem);
+
+      const reader = new CourseReader(db);
+      const resolver = await reader.createMarkdownUrlResolver(
+        "content/projects/alpha-unit/README.md",
+      );
+
+      expect(resolver(CAPTURED_LESSON_URL)).toEqual({
+        kind: "external-archive",
+        href: CAPTURED_LESSON_HREF,
+        originalHref: CAPTURED_LESSON_URL,
+        archiveId: expect.any(String),
+      });
+      expect(resolver(MARKETING_COMPARE_URL)).toEqual({
+        kind: "external",
+        href: MARKETING_COMPARE_URL,
+      });
     } finally {
       await client.close();
     }
