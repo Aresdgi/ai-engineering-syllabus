@@ -41,13 +41,12 @@ No utilizar contenido demo inventado. Fixtures solo del repo real (ADR-009).
 2. Propuesto: pasada de alineación con shadcn/ui (skill `shadcn` instalada) como
    refactor sin cambios funcionales — ver `BACKLOG.md`.
 
-## Cola nocturna
-
 Último cierre: ninguno
-
-Marcas: `[ ]` pendiente · `[x]` cerrado según "Modo nocturno" de `ORCA.md` ·
-`[!]` necesita una decisión del usuario (motivo en la misma línea).
 
 ## Blockers
 
 Ninguno.
+
+## Cola desatendida
+
+<!-- [ ] pendiente · [x] cerrado según DESATENDIDO.md · [!] necesita al usuario (ver AGENT_BLOCKED o AGENT_FAILED) -->

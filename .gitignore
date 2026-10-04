@@ -21,7 +21,7 @@ coverage/
 .idea/
 .vscode/
 
-# Modo nocturno (noche.sh)
+# modo desatendido
 AGENT_STOP
 AGENT_BLOCKED
 AGENT_FAILED
