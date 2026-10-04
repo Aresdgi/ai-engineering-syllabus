@@ -114,3 +114,12 @@ Toda nueva función debe respetar `SOURCE_OF_TRUTH.md`.
   `Breadcrumb`; instalar `lucide-react` (declarado en `components.json`) en lugar de
   SVG inline; eliminar `space-y-*` y overrides `dark:` manuales. No tocar el render
   de prosa Markdown. QA visual y de contraste obligatoria.
+
+## Modo desatendido (candidatas)
+
+- `/favicon.ico` responde 404 (error en la consola del navegador, visto en la
+  captura de prueba del MCP de Playwright, 2026-10-04).
+- Base local para las QA de diseño con `@electric-sql/pglite-socket`
+  (devDependency que expone PGlite en un puerto para `DATABASE_URL`; cargar
+  datos con `db:migrate`, `ingest` y `archive:external`). Valorar con el
+  usuario delante: alternativas Postgres de Homebrew o Supabase local (Docker).
