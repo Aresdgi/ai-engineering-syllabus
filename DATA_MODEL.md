@@ -239,3 +239,78 @@ diseño original, sin retirar nada del previsto para hitos futuros:
 
 La comparación columna a columna está auditada en
 `docs/milestones/M1_QA_FIDELITY.md` §6.2.
+
+## external_archive_items (M2.5)
+
+Clase `EXTERNAL_ARCHIVE` (ADR-020). Diseño nuevo; no existía en el modelo
+original. Es **global**, no cuelga de `source_snapshots`: se direcciona por URL
+canónica y sobrevive a reingestas y cambios de snapshot.
+
+- id (uuid, PK, `DEFAULT gen_random_uuid()`)
+- original_url (text, `NOT NULL`) — tal cual aparece en el corpus
+- canonical_url (text, `NOT NULL`, `UNIQUE`) — host en minúsculas, sin barra
+  final
+- kind (text, `NOT NULL`, `CHECK (kind IN ('lesson','tool'))`)
+- host (text, `NOT NULL`)
+- language (text, nullable, `CHECK (language IN ('es','en'))`)
+- title (text, nullable) — literal (frontmatter/H1/API); nunca generado
+- content (text, nullable) — Markdown literal (solo lecciones capturadas)
+- content_sha256 (text, nullable)
+- content_format (text, nullable, `CHECK (content_format = 'markdown')`)
+- source_repository (text, nullable) — p. ej. `breatheco-de/knowledge-base`
+- source_commit (text, nullable) — commit pinneado
+- source_path (text, nullable) — path dentro del repo fuente
+- captured_at (timestamptz, `NOT NULL`)
+- method (text, `NOT NULL`, `CHECK (method IN ('registry-api+github-raw','wayback-metadata','manual','user-alias'))`)
+- http_status (integer, nullable)
+- wayback_url (text, nullable)
+- wayback_captured_at (timestamptz, nullable)
+- wayback_http_status (integer, nullable)
+- status (text, `NOT NULL`, `CHECK (status IN ('captured','unavailable','error','alias'))`)
+- alias_of_canonical_url (text, nullable) — FK lógica a `canonical_url`;
+  `CHECK`: no nula si y solo si `status = 'alias'`
+- last_error (text, nullable) — redactado
+- created_at / updated_at (timestamptz, `NOT NULL`, `DEFAULT now()`)
+
+En una fila `alias` el contenido se lee de la fila destino vía
+`alias_of_canonical_url` (no se copian bytes). Índices por `kind`, `status`,
+`host` y `language`.
+
+## external_archive_assets (M2.5)
+
+Bytes de las imágenes del material archivado, **direccionados por contenido con
+SHA-256** (no el SHA-1 git de `source_blobs`: las clases no se mezclan).
+
+- sha256 (text, PK)
+- bytes (bytea, `NOT NULL`)
+- content_type (text, `NOT NULL`)
+- byte_size (integer, `NOT NULL`)
+- source_url (text, `NOT NULL`) — URL de la que se descargó
+- captured_at (timestamptz, `NOT NULL`)
+
+## external_archive_item_assets (M2.5)
+
+Relación item ↔ imagen, con URL y `alt` literales; permite deduplicar una misma
+imagen entre items e idiomas.
+
+- item_id (uuid, `NOT NULL`, FK a `external_archive_items(id)` `ON DELETE CASCADE`)
+- asset_sha256 (text, `NOT NULL`, FK a `external_archive_assets(sha256)` `ON DELETE RESTRICT`)
+- original_url (text, `NOT NULL`) — URL tal cual en el Markdown
+- alt (text, nullable) — alt literal
+- Primary key: `(item_id, original_url)`
+
+## Idempotencia, RLS y aislamiento (M2.5)
+
+- **Idempotencia**: `UNIQUE(canonical_url)` en items y `sha256` como PK de
+  assets. Repetir la captura con el mismo contenido no inserta filas nuevas ni
+  actualiza `captured_at`; el hash solo cambia en una recaptura real con
+  contenido distinto. Los assets deduplican por hash.
+- **RLS**: `ENABLE ROW LEVEL SECURITY` en las tres tablas, sin políticas (mismo
+  patrón que el store SOURCE, ADR-010): el owner (servidor y CLI) bypassa RLS y
+  la Data API pública no expone filas.
+- **Aislamiento**: la migración nueva (`platform/drizzle/0002_*.sql`) crea solo
+  estas tablas; el CLI de captura únicamente ejecuta `SELECT` sobre
+  `source_files` y escribe en `external_archive_*`, jamás en el snapshot ni en
+  tablas SOURCE.
+- **Servido**: los assets se sirven por `/archive-assets/<sha256>`; leer el
+  archivo no requiere ningún host externo.

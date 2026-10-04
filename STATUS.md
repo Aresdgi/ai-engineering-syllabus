@@ -2,13 +2,13 @@
 
 ## Hito activo
 
-Hito 2.5 — Autonomía de 4Geeks (`docs/milestones/M2B_AUTONOMY.md`, en la rama
-`m2b-autonomy`)
+Ninguno en curso. Último cerrado: Hito 2.5 — Autonomía de 4Geeks
+(`docs/milestones/M2B_AUTONOMY.md`).
 
 ## Estado
 
-Hito 2 cerrado y mergeado en `main` (`0db4d89`). Hito 2.5 EN CURSO en la rama
-`m2b-autonomy` (sin mergear a `main`): ver el `STATUS.md` de esa rama.
+DONE — Hito 2.5 cerrado y mergeado en `main` (squash de la rama `m2b-autonomy`).
+No iniciar el Hito 3 sin el usuario.
 
 ## Fuente educativa
 
@@ -18,6 +18,20 @@ propio `Aresdgi/ai-engineering-syllabus` para enlaces (ADR-018).
 ## Regla activa
 
 No utilizar contenido demo inventado. Fixtures solo del repo real (ADR-009).
+
+## Resultado del Hito 2.5
+
+- Lecciones de 4Geeks enlazadas desde el corpus archivadas literalmente en la base
+  propia (`external_archive_*`, ADR-020) con sus imágenes, vista `/archive/…` con
+  aviso de material externo, URL original, fecha, método y hash; servidas sin
+  ningún host de 4Geeks (`/archive-assets/<sha256>`).
+- Lecciones retiradas: alias decididos por el usuario hacia la lección equivalente,
+  con aviso de sustitución. Herramientas: original + respaldo Wayback si existe.
+  Marketing intacto.
+- CLI idempotente `archive:external` (`--dry-run`), inventario reproducible en
+  `docs/milestones/M2B_LINK_INVENTORY.md`.
+- QA: `M2B_QA_TECHNICAL.md` (10/10 AC PASS) y `M2B_QA_FIDELITY.md`; correcciones y
+  re-QA (Claude Sonnet, capturas reales) 9/9 cerrados.
 
 ## Resultado del Hito 2
 
@@ -36,9 +50,7 @@ No utilizar contenido demo inventado. Fixtures solo del repo real (ADR-009).
 
 ## Próxima acción
 
-1. Cerrar el Hito 2.5 en la rama `m2b-autonomy`; revisión del usuario antes de
-   mergear a `main`.
-2. Propuesto: pasada de alineación con shadcn/ui (skill `shadcn` instalada) como
+1. Propuesto: pasada de alineación con shadcn/ui (skill `shadcn` instalada) como
    refactor sin cambios funcionales — ver `BACKLOG.md`.
 
 Último cierre: ninguno

@@ -84,6 +84,48 @@ Lee exclusivamente registros SOURCE.
 
 No puede escribir ni alterar SOURCE.
 
+### external-archive/
+
+Clase `EXTERNAL_ARCHIVE` (ADR-020): copias literales de material externo
+enlazado por el corpus, conservadas para leerlas sin acceso a 4Geeks. Vive en
+`platform/src/external-archive/`:
+
+- **Inventario**: `inventory.ts` y `urls.ts` extraen y normalizan las URL hacia
+  hosts de 4Geeks del snapshot activo y las clasifican en lección, herramienta
+  y marketing (función pura testeable).
+- **CLI**: `cli.ts` (`pnpm archive:external`, con `--dry-run`) captura de forma
+  idempotente: lecciones vía API pública del registro BreatheCode + raw de
+  GitHub con commit pinneado (`registry.ts`, `github.ts`), imágenes del Markdown
+  (`images.ts`), respeto de `robots.txt` (`robots.ts`, `http.ts`) y metadatos
+  Wayback de herramientas. Solo lee `source_files`; escribe en
+  `external_archive_*`.
+- **Store**: `schema.ts`, `store.ts` y `types.ts` sobre las tres tablas de
+  `DATA_MODEL.md`; los assets se direccionan por `sha256`.
+- **Alias**: `aliases.json` guarda como dato versionado el mapa de lecciones
+  retiradas decidido por el usuario.
+
+Rutas propias (server):
+
+- `/archive/[...path]` — `/archive/<host>/<path…>`: muestra el contenido literal
+  con aviso persistente, URL original, fecha de captura, método y hash; si el
+  item es `alias`, añade el aviso de sustitución. Sin peticiones salientes.
+- `/archive-assets/[sha256]` — route handler de imágenes desde la base propia,
+  con el mismo patrón de seguridad que `/source-files/` (allowlist de tipos,
+  `nosniff`, CSP `sandbox`, `ETag` = sha256, caché inmutable).
+
+Relación con `course/`:
+
+`course/external-archive.ts` lee el índice de material archivado (solo lectura)
+y `course/links.ts` lo recibe como
+`MarkdownResolutionContext.externalArchive` (mapa de URL canónica a
+`ExternalArchiveLink`). Al resolver un `href` `http(s)`: una lección `captured`
+o `alias` pasa a `kind: "external-archive"` (abre `/archive/…` y conserva el
+original), una herramienta con respaldo añade `backup` a `kind: "external"`, y
+marketing o URL sin archivo no cambian. Las imágenes de una lección archivada se
+resuelven a `kind: "archive-asset"` (`/archive-assets/<sha256>`). `course/`
+sigue sin escribir en ninguna tabla: lee SOURCE para el catálogo y, además, este
+índice externo archivado.
+
 ## Inmutabilidad
 
 Una sincronización puede crear una nueva versión SOURCE.

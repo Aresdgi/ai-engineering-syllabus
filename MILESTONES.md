@@ -9,6 +9,7 @@ El contenido educativo permanece determinado por el repositorio fuente.
 - [x] Hito 0 — Fundación
 - [x] Hito 1 — Ingestión fiel del repositorio
 - [x] Hito 2 — Navegador del syllabus real
+- [x] Hito 2.5 — Autonomía de 4Geeks
 - [ ] Hito 3 — Progreso personal
 - [ ] Hito 4 — Contextos, assets y relaciones
 - [ ] Hito 5 — Búsqueda del corpus
@@ -40,6 +41,12 @@ Este hito ocurre antes de construir el LMS real.
 Mostrar en UI exclusivamente los proyectos, contextos y lecciones importados.
 
 El orden de proyectos debe seguir `content/projects/README.md`.
+
+---
+
+## Hito 2.5 — Autonomía de 4Geeks
+
+Archivar el material externo de 4Geeks enlazado desde el repo (lecciones) y dar respaldo a sus herramientas, para que el curso no dependa de 4Geeks.
 
 ---
 

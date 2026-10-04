@@ -12,7 +12,16 @@
     }
   }
 }
-@custom-variant hover-fine (@media (hover: hover) and (pointer: fine));
+/* D-04 (M2B): «solo hover» debe incluir el pseudoestado; sin `&:hover` los
+   estilos se aplicaban siempre en escritorio (p. ej. el respaldo Wayback
+   perdía su tono atenuado en reposo). */
+@custom-variant hover-fine {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
 
 @theme inline {
   --color-background: var(--background);

@@ -9,7 +9,9 @@
  *   documentos concretos necesarios (README de proyectos, documento preferido
  *   para el H1 y el resolvedor de enlaces).
  * - El mapa de paths y las vistas internas se memoizan por `snapshotId` en la
- *   instancia; no hay N+1 por enlace.
+ *   instancia; no hay N+1 por enlace. El índice de EXTERNAL_ARCHIVE no se
+ *   memoiza con el snapshot (T-01): sus tablas son mutables y se releen por
+ *   request.
  * - Los subproyectos se derivan en lectura: directorio hijo directo de un
  *   proyecto de primer nivel que contiene `learn.json` (excluye `.ocultos`).
  * - Cualquier escritura en base está prohibida: este módulo solo usa `select`.
@@ -19,6 +21,7 @@ import "server-only";
 
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
+import { cache } from "react";
 
 import {
   sourceBlobs,
@@ -31,6 +34,11 @@ import {
   sourceSnapshots,
 } from "../source/store/schema";
 import type { MarkdownUrlResolver } from "../lib/markdown/types";
+import { describeError } from "../lib/redact";
+import {
+  createExternalArchiveReader,
+  type ExternalArchiveReader,
+} from "./external-archive";
 import {
   isCourseLanguage,
   isCourseLanguageEvidence,
@@ -67,6 +75,7 @@ import type {
   CourseSnapshot,
   CourseUnit,
   CourseUnitKind,
+  ExternalArchiveLink,
   LanguageVariant,
   ProjectsIndex,
   ResolvedDocumentVariant,
@@ -187,6 +196,23 @@ function compareProjectUnits(a: CourseUnit, b: CourseUnit): number {
   }
   return comparePaths(a.sourcePath, b.sourcePath);
 }
+
+/**
+ * Lector de EXTERNAL_ARCHIVE memoizado por request con `cache()` de React
+ * (T-01), con la base del `CourseReader` como clave de identidad. Dentro de
+ * una request todos los resolvedores comparten el índice de archivo; entre
+ * requests se relee, porque `external_archive_*` es mutable (el CLI captura
+ * desde otro proceso). Fuera de una request React no memoiza: cada llamada
+ * construye un lector nuevo y relee.
+ */
+const externalArchiveForDatabase = cache(
+  <
+    TQueryResult extends PgQueryResultHKT,
+    TFullSchema extends Record<string, unknown>,
+  >(
+    db: PgDatabase<TQueryResult, TFullSchema> | null,
+  ): ExternalArchiveReader => createExternalArchiveReader(db),
+);
 
 export class CourseReader<
   TQueryResult extends PgQueryResultHKT = PgQueryResultHKT,
@@ -1176,8 +1202,34 @@ export class CourseReader<
       directoryHrefs: views.directoryHrefs,
       snapshot: context.snapshot,
       repositoryUrl: mirrorRepositoryUrl(),
+      externalArchive: await this.loadExternalArchiveIndex(),
     };
     return createMarkdownResolver(resolutionContext);
+  }
+
+  /**
+   * Índice de EXTERNAL_ARCHIVE (URL canónica → item) para el resolvedor. No se
+   * memoiza junto al snapshot (T-01): `external_archive_*` es mutable y el CLI
+   * captura desde otro proceso, así que el lector se comparte solo dentro de la
+   * request (`cache()` de React) y entre requests se relee. Si la base del
+   * archivo no está disponible (migración ausente, error transitorio), degrada
+   * a un índice vacío para no romper la lectura del curso.
+   */
+  private async loadExternalArchiveIndex(): Promise<
+    ReadonlyMap<string, ExternalArchiveLink>
+  > {
+    return this.externalArchive()
+      .createExternalArchiveIndex()
+      .catch((error: unknown) => {
+        console.error(
+          `[course] índice de material archivado no disponible: ${describeError(error, process.env)}`,
+        );
+        return new Map<string, ExternalArchiveLink>();
+      });
+  }
+
+  private externalArchive(): ExternalArchiveReader {
+    return externalArchiveForDatabase(this.db);
   }
 
   // --- Vistas internas para el resolvedor -----------------------------------

@@ -123,3 +123,16 @@ Toda nueva función debe respetar `SOURCE_OF_TRUTH.md`.
   (devDependency que expone PGlite en un puerto para `DATABASE_URL`; cargar
   datos con `db:migrate`, `ingest` y `archive:external`). Valorar con el
   usuario delante: alternativas Postgres de Homebrew o Supabase local (Docker).
+
+## Autonomía de 4Geeks (pendiente tras H2.5)
+
+- F-01 (heredado de H2): la portada de `seats-management-typescript`
+  (`assets/cover/images/cinema_matrix.png`) se carga desde GitHub en tiempo de
+  ejecución porque la ingesta solo importa `content/`. Opciones: ampliar la ingesta
+  a los archivos fuera de `content/` referenciados por el corpus (ADR) o archivarlos.
+- F-02: 336 referencias a badges de `img.shields.io` (decorativos; degradan a
+  imagen rota con `alt` sin red).
+- O-02: el parser de `robots.txt` del CLI no interpreta comodines `*`/`$`.
+- QA de diseño: las capturas de página completa no cargan las imágenes con
+  `loading="lazy"` fuera de la vista; hacer scroll antes de capturar o capturar por
+  secciones.

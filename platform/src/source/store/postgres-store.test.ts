@@ -252,6 +252,7 @@ describe("PostgresSourceStore sobre PGlite con las migraciones reales", () => {
     const result = await context.client.query<{ table_name: string }>(
       `select table_name from information_schema.tables
        where table_schema = 'public' and table_type = 'BASE TABLE'
+         and table_name like 'source\\_%'
        order by table_name`,
     );
 
@@ -268,12 +269,20 @@ describe("PostgresSourceStore sobre PGlite con las migraciones reales", () => {
        order by relname`,
     );
 
-    expect(tables.rows).toHaveLength(TABLE_NAMES.length);
+    const tableNames = tables.rows.map((row) => row.relname);
     for (const row of tables.rows) {
       expect(row.relrowsecurity, `RLS deshabilitado en ${row.relname}`).toBe(
         true,
       );
     }
+    expect(tableNames).toEqual(
+      expect.arrayContaining([
+        ...TABLE_NAMES,
+        "external_archive_assets",
+        "external_archive_item_assets",
+        "external_archive_items",
+      ]),
+    );
 
     const policies = await context.client.query<{ count: number }>(
       `select count(*)::int as count from pg_policies where schemaname = 'public'`,

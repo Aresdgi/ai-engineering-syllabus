@@ -136,3 +136,51 @@ export type ProjectsIndex = {
   orderSource: CourseTextDocument;
   units: CourseUnit[];
 };
+
+// --- Material externo archivado (Hito 2.5, plan §6.3 + §8) ------------------
+
+/**
+ * Estado de un item de EXTERNAL_ARCHIVE. `alias` es la decisión explícita del
+ * usuario para las lecciones retiradas sin fuente: la fila no tiene copia
+ * propia y apunta a la lección equivalente archivada.
+ */
+export type ExternalArchiveStatus =
+  | "captured"
+  | "unavailable"
+  | "error"
+  | "alias";
+
+/**
+ * Item del índice de archivo tal como lo consume el resolvedor de enlaces.
+ * La clave del índice es `canonicalUrl`.
+ */
+export type ExternalArchiveLink = {
+  id: string;
+  canonicalUrl: string;
+  kind: "lesson" | "tool";
+  language: CourseLanguage | null;
+  status: ExternalArchiveStatus;
+  /** Ruta interna `/archive/<host>/<path…>` si hay copia propia (captured/alias). */
+  href: string | null;
+  waybackUrl: string | null;
+  waybackCapturedAt: string | null;
+  /** URL canónica de la lección destino cuando `status = "alias"`. */
+  aliasOfCanonicalUrl: string | null;
+};
+
+/** Item completo de archivo (índice + contenido literal y procedencia). */
+export type ExternalArchiveItem = ExternalArchiveLink & {
+  originalUrl: string;
+  host: string;
+  /** Título literal de la fuente; nunca generado. */
+  title: string | null;
+  /** Markdown literal (solo lecciones con copia); nunca resumido/traducido. */
+  content: string | null;
+  contentSha256: string | null;
+  sourceRepository: string | null;
+  sourceCommit: string | null;
+  sourcePath: string | null;
+  capturedAt: string;
+  method: string;
+  httpStatus: number | null;
+};

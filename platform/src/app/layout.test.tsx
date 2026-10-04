@@ -133,6 +133,19 @@ describe("RootLayout / globals.css", () => {
     ).toBeGreaterThanOrEqual(3);
   });
 
+  it("D-01: el primer plano sobre --muted pasa AA en claro (código en blockquote)", () => {
+    expect(
+      contrast(token(lightTokens, "foreground"), token(lightTokens, "muted")),
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("D-04: el variant hover-fine aplica :hover bajo la media de puntero fino", () => {
+    const block = extractBlock(css, "@custom-variant hover-fine");
+
+    expect(block).toMatch(/@media \(hover: hover\) and \(pointer: fine\)/);
+    expect(block).toMatch(/&:hover\s*\{[^}]*@slot/);
+  });
+
   it("D-16: globals.css no importa tw-animate-css", () => {
     expect(css).not.toContain("tw-animate-css");
   });
